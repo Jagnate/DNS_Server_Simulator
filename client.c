@@ -65,6 +65,4 @@ int main(int argc, char *argv[]){
 	/* null-terminate the received data */
 	close(sock);
 
-
 }
-

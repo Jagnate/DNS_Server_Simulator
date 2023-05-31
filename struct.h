@@ -48,7 +48,6 @@ int CreateHeader(struct DNS_Header *header_section,
 {
     if(header_section == NULL) return -1;
     memset(header_section, 0, sizeof(struct DNS_Header));
-
 	//ID随机random
 	//srandom(time(NULL)); 
     if(queryNum!=0x0000&answerNum==0x0000){

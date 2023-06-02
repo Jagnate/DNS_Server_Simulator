@@ -1,17 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-// #include <arpa/inet.h> 
-#include <windows.h>
-#pragma comment(lib, "wsock32.lib")
+#include <arpa/inet.h> 
 #include <stdlib.h>
 
-//root server ip
-#define ROOT_SERVER_IP "127.0.0.3"
-#define ROOT_SERVER_PORT 53
-
-#define MAX_DOMAIN_LEN 100
-
-char domain_value[MAX_DOMAIN_LEN];
 
 struct DNS_Header{
     unsigned short id;
@@ -20,24 +11,14 @@ struct DNS_Header{
     unsigned short answerNum;
     unsigned short authorNum;
     unsigned short addNum;
-}DH;
+};
 
 struct DNS_Query{
     int length;
     unsigned char *name;
     unsigned short qtype;
     unsigned short qclass;
-}DQ;
-
-struct DNS_RR{
-	char *name;   
-	unsigned short type;     //请求的域名
-	unsigned short _class;   //响应的资源记录的类型 一般为[IN:0x0001]
-	unsigned int ttl;        //该资源记录被缓存的秒数。
-	unsigned short data_len; //RDATA部分的长度
-	unsigned short pre;      //MX特有的优先级 Preference
-	char *rdata;	         //[A:32位的IP地址（4字节）] [CNAME/NS/MX:域名]
-}DR;
+};
 
 unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请求消息（该位为0）还是应答消息（该位为1）
                             unsigned short opcode,   //[4]0000 标准查询为0 反向查询微1
@@ -58,12 +39,12 @@ unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请�
 }
 
 int CreateHeader(struct DNS_Header *header_section, 
-                unsigned short id,
-                unsigned short tag, 
-                unsigned short queryNum,
-                unsigned short answerNum,
-                unsigned short authorNum,
-                unsigned short addNum)
+                    unsigned short id,
+                    unsigned short tag, 
+                    unsigned short queryNum,
+                    unsigned short answerNum,
+                    unsigned short authorNum,
+                    unsigned short addNum)
 {
     if(header_section == NULL) return -1;
     memset(header_section, 0, sizeof(struct DNS_Header));
@@ -130,6 +111,7 @@ int MergeRequest(struct DNS_Header* header_section,struct DNS_Query* query_secti
     offset+=sizeof(query_section->qtype);
     memcpy(request+offset,&query_section->qclass,sizeof(query_section->qclass));
     offset+=sizeof(query_section->qclass);
+    query_section->length = offset;
     return offset;
 }
 
@@ -140,74 +122,4 @@ unsigned short TypeTrans(char* type)
 	if (strcmp(type,"CNAME")==0) return 0x0005;
 	if (strcmp(type,"MX")==0) return 0x000F;
 	return -1;
-}
-
-unsigned short Get16Bits(char *buffer,int *buffer_pointer){
-    unsigned short value;
-    memcpy(&value,buffer+*buffer_pointer,2);
-    *buffer_pointer+=2;
-    return ntohs(value);
-}
-
-void DecodeHeader(struct DNS_Header *header,char *buffer,int *buffer_pointer){
-    header->id=Get16Bits(buffer,buffer_pointer);
-    header->tag=Get16Bits(buffer,buffer_pointer);
-    header->queryNum=Get16Bits(buffer,buffer_pointer);
-    header->answerNum=Get16Bits(buffer,buffer_pointer);
-    header->authorNum=Get16Bits(buffer,buffer_pointer);
-    header->addNum=Get16Bits(buffer,buffer_pointer);
-    return;
-}
-
-void DecodeDomain(char* domain){
-	memset(domain_value,0,MAX_DOMAIN_LEN);
-	int cnt = 0;
-	char *p = domain;  
-	int count = *p;
-	while(count!=0){
-		for(int i=0;i<count;i++){
-			p += 1;
-			domain_value[cnt] = *p;
-			cnt++;
-		}
-		if (*(p+1)!=0) {
-			domain_value[cnt] = '.';
-			cnt++;
-		}
-		p += 1;
-		count = *p;
-	}
-	domain_value[cnt]=0;
-}
-
-void GetDomainName(char *buffer,int *buffer_pointer,int *lengthOfDomain){
-	
-	int cnt=0;
-	while(buffer[*buffer_pointer]!=0){
-		domain_value[cnt] = buffer[*buffer_pointer]; 
-		cnt++;
-		(*buffer_pointer)++;
-	}
-	domain_value[cnt] = 0; //末尾为0，写入字符串结束符，方便对字符数组进行字符串操作
-	(*buffer_pointer)++; //缓冲区读写下一位指针指示跳过末尾0
-	*lengthOfDomain = cnt+1; //包含了末尾结束符 
-	//printf("value in function: %s\n",value);
-	
-}
-
-void DecodeQuery(struct DNS_Query *query, char *buffer,int *buffer_pointer){
-
-    char* domain_name = malloc(MAX_DOMAIN_LEN); 
-	memset(domain_name,0,MAX_DOMAIN_LEN);
-	int lengthOfDomain=0;
-	GetDomainName(buffer,buffer_pointer,&lengthOfDomain);
-	memcpy(domain_name,domain_value,lengthOfDomain);
-	
-	//解码域名
-	DecodeDomain(domain_name);
-	memcpy(domain_name,domain_value,strlen(domain_name));  
-	
-	query->name = domain_name;
-	query->qtype = Get16Bits(buffer,buffer_pointer);
-	query->qclass = Get16Bits(buffer,buffer_pointer);
 }

@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
 	/* Construct the server address structure */
 	memset(&ServAddr, 0, sizeof(ServAddr));
 	ServAddr.sin_family = AF_INET;
-	ServAddr.sin_addr.s_addr = inet_addr("127.0.0.2");
+	ServAddr.sin_addr.s_addr = inet_addr("127.1.1.1");
 	ServAddr.sin_port = htons(ServPort);
 
 	/* Create header and query */
@@ -64,5 +64,5 @@ int main(int argc, char *argv[]){
 			(struct sockaddr *) &ServAddr, sizeof(ServAddr));
 	/* null-terminate the received data */
 	close(sock);
-
+	return 0;
 }

@@ -36,36 +36,67 @@ void RecvSocket(){
     DecodeQuery(recv_query,recv_buf,&recv_buf_pointer);
 }
 
-void FirstFind(){
+// int FirstFind(){
+//     int find_flg=0;
+//     struct DNS_RR *fileRR;
+//     fileRR=malloc(sizeof(DR));
+//     memset(fileRR,0,sizeof(DR));
+//     fileRR->name=malloc(MAX_DOMAIN_LEN);
+//     fileRR->rdata=malloc(MAX_DOMAIN_LEN);
 
-    FILE *RR=fopen("rootserver.txt","a+");
-    struct DNS_RR *fileRR;
-    fileRR=malloc(sizeof(DR));
-    memset(fileRR,0,sizeof(DR));
-    fileRR->name=malloc(MAX_DOMAIN_LEN);
-    fileRR->rdata=malloc(MAX_DOMAIN_LEN);
-
-    while(fscanf(RR,"%s ",fileRR->name)!=EOF){
-        fscanf(RR,"%d",&fileRR->ttl);
-        char type[10],cls[10];
-        fscanf(RR,"%s ",cls);
-        fscanf(RR,"%s ",type);
-        fileRR->type=TypeTrans(type);
-        fscanf(RR,"%s\n",fileRR->rdata);
-        if(strcmp(recv_query->name,fileRR->name)==0 && (recv_query->qtype==fileRR->type)){
-            printf("Find in root cache.\n");
-            CreatRR(fileRR,fileRR->name,fileRR->type,0x0001,fileRR->ttl,0x0000,fileRR->rdata);
-            struct DNS_Header *header;
-            header=malloc(sizeof(DH));
-            unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
-            if(strcmp(type,"MX")==0){
-                CreateHeader(header,0x0002,tag,0,1,0,1);
-            }
-
-        }
-    }
-    
-}
+//     while(fscanf(RR,"%s ",fileRR->name)!=EOF){
+//         fscanf(RR,"%d",&fileRR->ttl);
+//         char type[10],cls[10];
+//         fscanf(RR,"%s ",cls);
+//         fscanf(RR,"%s ",type);
+//         fileRR->type=TypeTrans(type);
+//         fscanf(RR,"%s\n",fileRR->rdata);
+//         if(strcmp(recv_query->name,fileRR->name)==0 && (recv_query->qtype==fileRR->type)){
+//             printf("Find in root cache.\n");
+//             CreatRR(fileRR,fileRR->name,fileRR->type,0x0001,fileRR->ttl,0x0000,fileRR->rdata);
+//             struct DNS_Header *header;
+//             header=malloc(sizeof(DH));
+//             unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
+//             if(strcmp(type,"MX")==0){
+//                 CreateHeader(header,0x0002,tag,0,1,0,1);
+//             }
+//             else{
+//                 CreateHeader(header,0x0002,tag,0,1,0,0);
+//             }
+//             EncodeHeader(header,send_buf,&send_buf_pointer);
+//             PinrtHeader(header);
+//             EncodeRR(fileRR,send_buf,&send_buf_pointer);
+//             PrintRR(fileRR);
+//             find_flg=1;
+//             break;
+//         }
+//     }
+//     //回位
+//     fseek(RR,0,0);
+//     //MX类型
+//     if(fileRR->type==TYPE_MX){
+//         struct DNS_RR *addFileRR;
+//         addFileRR=malloc(sizeof(DR));
+//         addFileRR->name=malloc(MAX_DOMAIN_LEN);
+//         addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
+//         while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
+//             fscanf(RR,"%d ",&addFileRR->ttl);
+//             char type[10],cls[10];
+//             fscanf(RR,"%s ",cls);
+//             fscanf(RR,"%s ",type);
+//             addFileRR->type=TypeTrans(type);
+//             fscanf(RR,"%s\n",addFileRR->rdata);
+//             if(strcmp(fileRR->rdata,addFileRR->name)==0){
+//                 printf("find mx rr.\n");
+//                 CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
+//                 EncodeRR(addFileRR,send_buf,send_buf_pointer);
+//                 PrintRR(addFileRR);
+//                 break;;
+//             }
+//         }
+//     }
+//     return find_flg; 
+// }
 
 int main(){
 
@@ -79,10 +110,62 @@ int main(){
     len=sizeof(cli_addr);
     while(1){
         RecvSocket();
-        struct DNS_RR *RR_answer, *RR_authority, *RR_additional;
         char *domain = recv_query->name;
-        FirstFind();
-
+        FILE *RR=fopen("rootserver.txt","a+");
+        // CutDomain(&recv_query->name);
+        while(recv_query->name!=NULL){
+            fseek(RR,0,0);  
+            //在RR记录中搜索
+            struct DNS_RR *nextRR;
+            nextRR = malloc(sizeof(DR));
+            nextRR->name=malloc(MAX_DOMAIN_LEN);
+            nextRR->rdata=malloc(MAX_DOMAIN_LEN);
+            while(fscanf(RR,"%s ",nextRR->name)!=EOF){
+                fscanf(RR,"%d ",&nextRR->ttl);
+                char type[10],cls[10];
+                fscanf(RR,"%s ",cls);
+                fscanf(RR,"%s ",type);
+                nextRR->type = TypeTrans(type);
+                fscanf(RR,"%s\n",nextRR->rdata);
+                if(strcmp(recv_query->name,nextRR->name)==0){//找到之后
+                    printf("\n[SENT]ASK OTHER SERVER\n");
+                    //生成头
+                    struct DNS_Header *header;
+                    header = malloc(sizeof(DH));
+                    unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
+                    CreateHeader(header,0x1235,tag,0,0,1,1);
+                    EncodeHeader(header,send_buf,&send_buf_pointer);
+                    PrintHeader(header);
+                    
+                    //生成authority RR  NS记录type=2   此时query_section->name经过cut后已经变成了下一个要去的DNS服务器域名
+                    struct DNS_RR *authRR;
+                    authRR = malloc(sizeof(DR));
+                    CreateRR(authRR, domain, 2, 1, nextRR->ttl, 0, recv_query->name);
+                    EncodeRR(authRR,send_buf,&send_buf_pointer);
+                    PrintRR(authRR);
+                    
+                    //生成additon RR   A记录type=1
+                    struct DNS_RR *addRR;
+                    addRR = malloc(sizeof(DR));
+                    CreateRR(addRR, domain, 1, 1, nextRR->ttl, 0, nextRR->rdata);
+                    EncodeRR(addRR,send_buf,&send_buf_pointer);
+                    PrintRR(addRR);
+                    
+                    goto out;
+                }
+            }	
+            CutDomain(&recv_query->name);	
+        }
+        printf("Not found.\n");
+        //没找到应该回什么？
+        out:
+        fclose(RR);
+        //发送
+        sendto(recv_socket,send_buf,send_buf_pointer,0,(struct sockaddr*)&cli_addr,len);
+        send_buf_pointer=0;
+        recv_buf_pointer=0;
+        memset(send_buf,0,1024);
+        memset(recv_buf,0,1024);
     }
 
     close(recv_socket);

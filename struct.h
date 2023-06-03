@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <string.h>
-#include <arpa/inet.h> 
+// #include <arpa/inet.h> 
 #include <stdlib.h>
-//#include <windows.h>
-//#pragma comment(lib, "wsock32.lib")
+#include <windows.h>
+#pragma comment(lib, "wsock32.lib")
 
 #define SERVER_PORT 53
 //root server ip
@@ -125,7 +125,7 @@ int CreateQuery(struct DNS_Query* query_section,const char* domain_name,unsigned
     return 0;
 }
 
-void CreateRR(struct DNS_RR *RR,char* name, unsigned short type, unsigned short cls, unsigned int ttl, unsigned short pre,char *rdata){
+void CreateRR(struct DNS_RR *RR,char* name, unsigned short type, unsigned short _class, unsigned int ttl, unsigned short pre,char *rdata){
     //unsigned short pre为一个MX类型特有的优先级，定长，只有MX类型发送。
 	int domain_length = strlen(name);
 	//易错点：strlen只读到0但不包含0，所以为了把结束符也复制进去，长度要+1
@@ -133,7 +133,7 @@ void CreateRR(struct DNS_RR *RR,char* name, unsigned short type, unsigned short 
 	memcpy(RR->name,name,domain_length+1);
 	
 	RR->type = type;
-	RR->cls = cls;
+	RR->_class = _class;
 	RR->ttl = ttl;       //data_len
 	if (type==TYPE_A) RR->data_len=4;  //对于IP，长度为4 data_len是编码后的长度，length是非编码长度，注意
 		else RR->data_len = strlen(rdata) + 2;      //对于域名，生成data_len包含末尾结束符（域名末尾结束符）
@@ -171,8 +171,7 @@ int MergeRequest(struct DNS_Header* header_section,struct DNS_Query* query_secti
 }
 
 
-unsigned short TypeToNum(char* type)
-{
+unsigned short TypeToNum(char* type){
 	if (strcmp(type,"A")==0) return TYPE_A;
 	if (strcmp(type,"NS")==0) return TYPE_NS;
 	if (strcmp(type,"CNAME")==0) return TYPE_CNAME;
@@ -180,8 +179,7 @@ unsigned short TypeToNum(char* type)
 	return -1;
 }
 
-char* numToType(unsigned short num)
-{
+char* numToType(unsigned short num){
 	if (num==0x0001) return "A";
 	if (num==0x0002) return "NS";
 	if (num==0x0005) return "CNAME";
@@ -226,14 +224,14 @@ void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
 	int lengthOfEncodedDomain = strlen(RR->name)+2;
 	domain_name = malloc(lengthOfEncodedDomain);
 	 
-	EncodeDomain(RR->name);
+	EncodeDomain(domain_name,RR->name);
 	memcpy(domain_name,domain_value,lengthOfEncodedDomain);
 	
 	
     PutDomainName(buffer,buffer_pointer,domain_name); 
 	
 	Put16Bits(buffer,buffer_pointer,RR->type);
-	Put16Bits(buffer,buffer_pointer,RR->cls);
+	Put16Bits(buffer,buffer_pointer,RR->_class);
 	Put32Bits(buffer,buffer_pointer,RR->ttl);
 	Put16Bits(buffer,buffer_pointer,RR->data_len);   
 	if (RR->type==0x000F) 
@@ -256,7 +254,7 @@ void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
 		//printf("length:%d\n",lengthOfEncodedDomain2); //for test
 		rdata = malloc(lengthOfEncodedDomain2);
 		//printf("encodedomain:[%s]\n",encodeDomain(resource_record->rdata)); //encodeDomain函数周期性抽风 测试文件在test4
-		EncodeDomain(RR->rdata);
+		EncodeDomain(rdata,RR->rdata);
 		memcpy(rdata,domain_value,lengthOfEncodedDomain2);   
 		//printf("rdata:[%s]\n",rdata);    //这里已经错误
 		PutDomainName(buffer,buffer_pointer,rdata); 
@@ -270,36 +268,6 @@ void DecodeHeader(struct DNS_Header *header,char *buffer,int *buffer_pointer){
     header->answerNum=Get16Bits(buffer,buffer_pointer);
     header->authorNum=Get16Bits(buffer,buffer_pointer);
     header->addNum=Get16Bits(buffer,buffer_pointer);
-}
-
-void EncodeDomain(char* domain)           {
-	memset(domain_value,0,MAX_DOMAIN_LEN);   //易BUG：初始化！
-	int valueWriting=0;
-	char *p,*q;
-	q = domain;
-	p = q;
-	char count = 0;
-	while(1)   {
-		if((*p=='.')||(*p==0)){
-			//第一位为count,写入字符串  
-			*(domain_value+valueWriting)=count;  //此处最后一位0的情况写入了 
-			valueWriting += 1;
-			//写入q开始，长度为count的字符串（长度为count)
-			memcpy(domain_value+valueWriting,q,count);
-			valueWriting += count; 
-			
-			//计数清0
-			count = 0;
-			//如果未读到字符串末尾，将q移动到p+1的位置，重新开始下一轮
-			if (*p=='.'){
-				q=p+1;
-				p = q;
-			}else break;
-		}else{
-			p++;
-			count++;
-		}
-	}
 }
 
 void DecodeDomain(char* domain){

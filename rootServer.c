@@ -1,21 +1,21 @@
 #include <stdio.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+// #include <sys/socket.h>
+// #include <sys/un.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <arpa/inet.h>
+// #include <arpa/inet.h>
 #include <stdlib.h>  
 #include <stdint.h>
 #include <unistd.h>  
 #include <sys/stat.h>  
 #include <fcntl.h>  
 #include <errno.h>   
-// #include<winsock.h>
-// #include<winsock2.h>
-// #include <windows.h>
-// #pragma comment(lib, "wsock32.lib")
+#include<winsock.h>
+#include<winsock2.h>
+#include <windows.h>
+#pragma comment(lib, "wsock32.lib")
 
 #include "struct.h"
 
@@ -99,16 +99,12 @@ void RecvSocket(){
 //     return find_flg; 
 // }
 
-    printf("[Connection established]\n");
-    
-    if ((recvMsgSize = recv(acceptfd, recv_buffer, sizeof(recv_buffer),0) < 0))
-            printf("recvform() failed,\n");
-
+int main(){
     memset(recv_buf,0,1024);
     memset(send_buf,0,1024);
     recv_socket=socket(AF_INET,SOCK_DGRAM,0);
     root_addr.sin_family=AF_INET;
-    root_addr.sin_port=htons(ROOT_SERVER_PORT);
+    root_addr.sin_port=htons(SERVER_PORT);
     root_addr.sin_addr.s_addr=inet_addr(ROOT_SERVER_IP);
     bind(recv_socket,(struct sockaddr*)&root_addr,sizeof(root_addr));
     len=sizeof(cli_addr);
@@ -136,7 +132,7 @@ void RecvSocket(){
                     //生成头
                     struct DNS_Header *header;
                     header = malloc(sizeof(DH));
-                    unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
+                    unsigned short tag = CreateTag(1,0,1,0,0,0);
                     CreateHeader(header,0x1235,tag,0,0,1,1);
                     EncodeHeader(header,send_buf,&send_buf_pointer);
                     PrintHeader(header);
@@ -171,19 +167,15 @@ void RecvSocket(){
         memset(send_buf,0,1024);
         memset(recv_buf,0,1024);
     }
-    printf("Not found.\n");
-    //没找到应该回什么？
-    out:
-    fclose(RR);
-    //
+
     char TCPBuffer[1024];
 	unsigned short length = ntohs(len);
 	memcpy(TCPBuffer,&length,2);
-	memcpy(TCPBuffer+2,send_buffer,2+len);
-    send(acceptfd,send_buffer,len+2,0);
+	memcpy(TCPBuffer+2,send_buf,2+len);
+    // send(acceptfd,send_buf,len+2,0);
 
-    close(acceptfd);
-    close(sockfd);
+    // close(acceptfd);
+    close(recv_socket);
  
     return 0;
 }

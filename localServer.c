@@ -93,12 +93,50 @@ int main(int argc, char *argv[]){
 		memcpy(TCPBuffer,&length,2);
 		memcpy(TCPBuffer+2,recv_buffer,2+recvMsgSize);
         ret = send(ServerSocketTCP,TCPBuffer,2+recvMsgSize,0);
-
-		if ((recvMsgSize = recvfrom(ServerSocketTCP, request_buffer, 1024,
-			0, (struct sockaddr *) &rootServAddr, &rootAddrlen)) < 0)
-                printf("recvform() failed,\n");
+		close(ServerSocketTCP);
 		
-        close(ServerSocketTCP);
+	//Receive from root RR
+		//创建流式套接字
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(-1 == sockfd){
+        printf("socket error \n");
+    }
+ 
+    //填充信息本地信息结构体
+    struct sockaddr_in localServAddr = {0}; 
+    localServAddr.sin_family = AF_INET;
+	localServAddr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
+	localServAddr.sin_port = htons(SERVER_PORT);
+ 
+    socklen_t localserveraddr_len = sizeof(localServAddr);
+ 
+    //绑定
+    if(bind(sockfd, (struct sockaddr *)&localServAddr, localserveraddr_len)<0){
+        printf("bind error\n");
+        exit(1);
+    }
+ 
+    //监听
+    listen(sockfd, 20);
+
+    //定义结构体保存对方的信息
+    struct sockaddr_in rootClntAddr;
+    memset(&rootClntAddr, 0, sizeof(rootClntAddr));
+    socklen_t rootclntlen = sizeof(rootClntAddr);
+
+    int acceptfd = accept(sockfd, (struct sockaddr *)&rootClntAddr, &rootclntlen);
+    if(-1 == acceptfd){
+        printf("accept error\n");
+    }
+
+    printf("[Connection established]\n");
+    
+    if ((recvMsgSize = recv(acceptfd, recv_buffer, sizeof(recv_buffer),0) < 0))
+            printf("recvform() failed,\n");
+
+    close(acceptfd);
+    close(sockfd);
+        
 	//}
 
     return 0;

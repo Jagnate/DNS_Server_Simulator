@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
 	//对应: qr,opcode,aa,tc,rd,ra,z,rcode，其中opcode z rcode可以随便填写. 默认不超过512，tc为1
 	CreateHeader(&header_section,0,CreateTag(0,0,0,0,0,1),1,0,0,0);
 	struct DNS_Query query_section = {0};
-	unsigned short qtype = TypeTrans(argv[2]);
+	unsigned short qtype = TypeToNum(argv[2]);
 	unsigned short qclass = 0x0001;	//Class in
 	CreateQuery(&query_section,argv[1],qtype,qclass);
 	int length = MergeRequest(&header_section,&query_section,RequestBuffer,1024);

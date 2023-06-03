@@ -2,7 +2,23 @@
 #include <string.h>
 #include <arpa/inet.h> 
 #include <stdlib.h>
+//#include <windows.h>
+//#pragma comment(lib, "wsock32.lib")
 
+//root server ip
+#define LOCAL_SERVER_IP "127.1.1.1"
+#define LOCAL_SERVER_PORT 53
+
+//root server ip
+#define ROOT_SERVER_IP "127.2.2.1"
+#define ROOT_SERVER_PORT 53
+
+#define MAX_DOMAIN_LEN 100
+
+#define TYPE_A 0x0001
+#define TYPE_NS 0x0002
+#define TYPE_CNAME 0x0005
+#define TYPE_MX 0x000F
 
 struct DNS_Header{
     unsigned short id;
@@ -11,30 +27,41 @@ struct DNS_Header{
     unsigned short answerNum;
     unsigned short authorNum;
     unsigned short addNum;
-};
+}DH;
 
 struct DNS_Query{
     int length;
     unsigned char *name;
     unsigned short qtype;
     unsigned short qclass;
-};
+}DQ;
+
+struct DNS_RR{
+	char *name;   
+	unsigned short type;     //请求的域名
+	unsigned short class;      //响应的资源记录的类型 一般为[IN:0x0001]
+	unsigned int ttl;        //该资源记录被缓存的秒数。
+	unsigned short data_len; //RDATA部分的长度
+	unsigned short pre;      //MX特有的优先级 Preference
+	char *rdata;	         //[A:32位的IP地址（4字节）] [CNAME/NS/MX:域名]
+}DR;
 
 unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请求消息（该位为0）还是应答消息（该位为1）
                             unsigned short opcode,   //[4]0000 标准查询为0 反向查询微1
                             unsigned short aa,       //[1]只在响应消息中有效。该位标示响应该消息的域名服务器是该域中的权威域名服务器。因为Answer Section中可能会有很多域名
                             unsigned short tc,       //[1]标示这条消息是否因为长度超过UDP数据包的标准长度512字节，如果超过512字节，该位被设置为1
                             unsigned short rd,       //[1]1 是否递归查询。1为递归查询
-                            unsigned short ra,       //[1]1 在响应消息中清除并设置。标示该DNS域名服务器是否支持递归查询。
-                            unsigned short z,        //[3]000   冗余res 0
-                            unsigned short rcode)    //[4]0000  成功的响应
+                            unsigned short ra)       //[1]1 在响应消息中清除并设置。标示该DNS域名服务器是否支持递归查询。
+                            //unsigned short z,        //[3]000   冗余res 0
+                            //unsigned short rcode)    //[4]0000  成功的响应
 {
 	unsigned short tag = 0;
-	if (qr==1)  tag = tag | 0x8000;
-	if (aa==1)  tag = tag | 0x0400;
-	if (tc==1)  tag = tag | 0x0200;
-	if (rd==1)  tag = tag | 0x0100;
-	if (ra==1)  tag = tag | 0x0080;
+	if (qr==1)      tag = tag | 0x8000;
+    if (opcode==1)  tag = tag | 0x0800;
+	if (aa==1)      tag = tag | 0x0400;
+	if (tc==1)      tag = tag | 0x0200;
+	if (rd==1)      tag = tag | 0x0100;
+	if (ra==1)      tag = tag | 0x0080;
 	return tag;
 }
 
@@ -60,27 +87,11 @@ int CreateHeader(struct DNS_Header *header_section,
     header_section->answerNum = htons(answerNum); 
     header_section->authorNum = htons(authorNum); 
     header_section->addNum = htons(addNum); 
-
 	return 0;
 }
 
-//创建question
-//hostname:www.baidu.com
-//name:3www5baidu3com'\0'
-int CreateQuery(struct DNS_Query* query_section,const char* domain_name,unsigned short qtype,unsigned short qclass){
-    if(query_section==NULL||domain_name==NULL) return -1;
-    memset(query_section,0,sizeof(struct DNS_Query));
-    query_section->name = (char*)malloc(strlen(domain_name)+2);//因为要判断结尾'\0'，然后再补充一个开头
-    if(query_section->name==NULL){//如果内存分配失败
-        return -2;
-    }
-    query_section->length=strlen(domain_name)+2;
-    query_section->qtype=htons(qtype);//查询类型，（1表示：由域名获得 IPv4 地址）
-    query_section->qclass=htons(qclass);//通常为 1，表明是 Internet 数据
-
-    //hostname->name
+void EncodeDomain(char* qname,const char* domain_name){
     const char delim[2]=".";//分隔符,末尾补个'\0'
-    char* qname = query_section->name;
     char* domain_name_dup=strdup(domain_name);//复制一份hostname  --->malloc(所以后续要free)
     char* token=strtok(domain_name_dup,delim);
     while(token!=NULL){
@@ -92,6 +103,24 @@ int CreateQuery(struct DNS_Query* query_section,const char* domain_name,unsigned
         token=strtok(NULL,delim);//因为上一次，token获取还未结束，因此可以指定NULL即可。(注意：要依赖上一次的结果，因此也是线程不安全的)
     }
     free(domain_name_dup);
+}
+
+//创建question
+//hostname:www.baidu.com
+//name:3www5baidu3com'\0'
+int CreateQuery(struct DNS_Query* query_section,const char* domain_name,unsigned short qtype,unsigned short qclass){
+    if(query_section==NULL||domain_name==NULL) return -1;
+    memset(query_section,0,sizeof(struct DNS_Query));
+    query_section->name = (unsigned char*)malloc(strlen(domain_name)+2);//因为要判断结尾'\0'，然后再补充一个开头
+    if(query_section->name==NULL){//如果内存分配失败
+        return -2;
+    }
+    query_section->length=strlen(domain_name)+2;
+    query_section->qtype=htons(qtype);//查询类型，（1表示：由域名获得 IPv4 地址）
+    query_section->qclass=htons(qclass);//通常为 1，表明是 Internet 数据
+    char* qname = (char *)query_section->name;
+    EncodeDomain(qname,domain_name);
+    //hostname->name
     return 0;
 }
 
@@ -115,11 +144,21 @@ int MergeRequest(struct DNS_Header* header_section,struct DNS_Query* query_secti
     return offset;
 }
 
-unsigned short TypeTrans(char* type)
+
+unsigned short TypeToNum(char* type)
 {
-	if (strcmp(type,"A")==0) return 0x0001;
-	if (strcmp(type,"NS")==0) return 0x0002;
-	if (strcmp(type,"CNAME")==0) return 0x0005;
-	if (strcmp(type,"MX")==0) return 0x000F;
+	if (strcmp(type,"A")==0) return TYPE_A;
+	if (strcmp(type,"NS")==0) return TYPE_NS;
+	if (strcmp(type,"CNAME")==0) return TYPE_CNAME;
+	if (strcmp(type,"MX")==0) return TYPE_MX;
 	return -1;
+}
+
+char* numToType(unsigned short num)
+{
+	if (num==0x0001) return "A";
+	if (num==0x0002) return "NS";
+	if (num==0x0005) return "CNAME";
+	if (num==0x000F) return "MX";
+	return "ERROR";
 }

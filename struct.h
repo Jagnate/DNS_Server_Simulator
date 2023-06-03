@@ -5,13 +5,11 @@
 //#include <windows.h>
 //#pragma comment(lib, "wsock32.lib")
 
+#define SERVER_PORT 53
 //root server ip
 #define LOCAL_SERVER_IP "127.1.1.1"
-#define LOCAL_SERVER_PORT 53
-
 //root server ip
 #define ROOT_SERVER_IP "127.2.2.1"
-#define ROOT_SERVER_PORT 53
 
 #define MAX_DOMAIN_LEN 100
 

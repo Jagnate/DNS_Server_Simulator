@@ -21,15 +21,13 @@
 
 int main(int argc, char *argv[]){
 	
-    char ReceiveBuffer[1024];
-	char RequestBuffer[1024];
-	unsigned short ServPort = 53;
+    char recv_buffer[1024];
+	char request_buffer[1024];
 
-    unsigned int cliAddrLen;
     int recvMsgSize;
 
-	memset(RequestBuffer,0,1024);
-    memset(ReceiveBuffer,0,1024);
+	memset(request_buffer,0,1024);
+    memset(recv_buffer,0,1024);
 
 	int ServerSocket;
     /* Create socket for sending/receiving datagrams*/
@@ -39,8 +37,8 @@ int main(int argc, char *argv[]){
 	struct sockaddr_in ServAddr;
 	memset(&ServAddr, 0, sizeof(ServAddr));
 	ServAddr.sin_family = AF_INET;
-	ServAddr.sin_addr.s_addr = inet_addr("127.1.1.1");
-	ServAddr.sin_port = htons(ServPort);
+	ServAddr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
+	ServAddr.sin_port = htons(SERVER_PORT);
 	/* Bind to the local address*/
 	if ((bind(ServerSocket, (struct sockaddr *) &ServAddr,
 		  sizeof(ServAddr))) < 0){
@@ -52,14 +50,14 @@ int main(int argc, char *argv[]){
 	//{
 		struct sockaddr_in ClntAddr;
 		int port = ClntAddr.sin_port;
-		memset(ReceiveBuffer,'\0',sizeof(ReceiveBuffer));
+		memset(recv_buffer,'\0',sizeof(recv_buffer));
 		/* Set the size of the in-out parameter */
-		cliAddrLen = sizeof(ClntAddr);
+		unsigned int cliAddrLen = sizeof(ClntAddr);
 		/* Block until receive message from a client*/
-		if ((recvMsgSize = recvfrom(ServerSocket, ReceiveBuffer, 1024,
+		if ((recvMsgSize = recvfrom(ServerSocket, recv_buffer, 1024,
 			0, (struct sockaddr *) &ClntAddr, &cliAddrLen)) < 0)
                 printf("recvform() failed,\n");
-		printf("From  %s: %d: %s\n", inet_ntoa(ClntAddr.sin_addr),port,ReceiveBuffer);
+		printf("From  %s: %d: %s\n", inet_ntoa(ClntAddr.sin_addr),port,recv_buffer);
 		close(ServerSocket);
 
         /* Send query using TCP */
@@ -72,7 +70,7 @@ int main(int argc, char *argv[]){
 		struct sockaddr_in ServAddrTCP;
 		memset(&ServAddrTCP, 0, sizeof(ServAddrTCP));
 		ServAddrTCP.sin_family = AF_INET;
-		ServAddrTCP.sin_addr.s_addr = inet_addr("127.1.1.1");
+		ServAddrTCP.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
 		/* Bind to the local address*/
 		if ((bind(ServerSocketTCP, (struct sockaddr *) &ServAddrTCP,
 			sizeof(ServAddrTCP))) < 0){
@@ -82,8 +80,9 @@ int main(int argc, char *argv[]){
 		struct sockaddr_in rootServAddr;
 		memset(&rootServAddr, 0, sizeof(rootServAddr));
 		rootServAddr.sin_family = AF_INET;
-		rootServAddr.sin_addr.s_addr = inet_addr("127.2.2.1");
-		rootServAddr.sin_port = htons(ServPort);
+		rootServAddr.sin_addr.s_addr = inet_addr(ROOT_SERVER_IP);
+		rootServAddr.sin_port = htons(SERVER_PORT);
+		unsigned int rootAddrlen = sizeof(rootServAddr);
 		int ret;
 		if((ret = connect(ServerSocketTCP, (const struct sockaddr *)&rootServAddr, sizeof(rootServAddr)))==-1){
 			printf("Accept Error,\n");
@@ -92,8 +91,13 @@ int main(int argc, char *argv[]){
 		char TCPBuffer[1024];
 		unsigned short length = ntohs(recvMsgSize);
 		memcpy(TCPBuffer,&length,2);
-		memcpy(TCPBuffer+2,ReceiveBuffer,2+recvMsgSize);
+		memcpy(TCPBuffer+2,recv_buffer,2+recvMsgSize);
         ret = send(ServerSocketTCP,TCPBuffer,2+recvMsgSize,0);
+
+		if ((recvMsgSize = recvfrom(ServerSocketTCP, request_buffer, 1024,
+			0, (struct sockaddr *) &rootServAddr, &rootAddrlen)) < 0)
+                printf("recvform() failed,\n");
+		
         close(ServerSocketTCP);
 	//}
 

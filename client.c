@@ -46,13 +46,13 @@ int main(int argc, char *argv[]){
 	/* Construct the server address structure */
 	memset(&ServAddr, 0, sizeof(ServAddr));
 	ServAddr.sin_family = AF_INET;
-	ServAddr.sin_addr.s_addr = inet_addr("127.0.0.2");
+	ServAddr.sin_addr.s_addr = inet_addr("127.1.1.1");
 	ServAddr.sin_port = htons(ServPort);
 
 	/* Create header and query */
 	struct DNS_Header header_section = {0};
 	//对应: qr,opcode,aa,tc,rd,ra,z,rcode，其中opcode z rcode可以随便填写. 默认不超过512，tc为1
-	CreateHeader(&header_section,0,CreateTag(0,0,0,0,0,1,1,0),1,0,0,0);
+	CreateHeader(&header_section,0,CreateTag(0,0,0,0,0,1),1,0,0,0);
 	struct DNS_Query query_section = {0};
 	unsigned short qtype = TypeTrans(argv[2]);
 	unsigned short qclass = 0x0001;	//Class in
@@ -64,5 +64,5 @@ int main(int argc, char *argv[]){
 			(struct sockaddr *) &ServAddr, sizeof(ServAddr));
 	/* null-terminate the received data */
 	close(sock);
-
+	return 0;
 }

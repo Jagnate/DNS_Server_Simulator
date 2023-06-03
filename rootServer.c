@@ -1,20 +1,21 @@
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
 #include <stdlib.h>  
 #include <stdint.h>
 #include <unistd.h>  
 #include <sys/stat.h>  
 #include <fcntl.h>  
-#include <errno.h>  
-// #include <netdb.h>  
-#include <sys/types.h>  
-// #include <sys/socket.h>  
-#include<winsock.h>
-#include<winsock2.h>
-// #include <netinet/in.h>  
-// #include <arpa/inet.h>
-#include <windows.h>
-#pragma comment(lib, "wsock32.lib")
+#include <errno.h>   
+// #include<winsock.h>
+// #include<winsock2.h>
+// #include <windows.h>
+// #pragma comment(lib, "wsock32.lib")
 
 #include "struct.h"
 
@@ -98,7 +99,10 @@ void RecvSocket(){
 //     return find_flg; 
 // }
 
-int main(){
+    printf("[Connection established]\n");
+    
+    if ((recvMsgSize = recv(acceptfd, recv_buffer, sizeof(recv_buffer),0) < 0))
+            printf("recvform() failed,\n");
 
     memset(recv_buf,0,1024);
     memset(send_buf,0,1024);
@@ -167,8 +171,19 @@ int main(){
         memset(send_buf,0,1024);
         memset(recv_buf,0,1024);
     }
+    printf("Not found.\n");
+    //没找到应该回什么？
+    out:
+    fclose(RR);
+    //
+    char TCPBuffer[1024];
+	unsigned short length = ntohs(len);
+	memcpy(TCPBuffer,&length,2);
+	memcpy(TCPBuffer+2,send_buffer,2+len);
+    send(acceptfd,send_buffer,len+2,0);
 
-    close(recv_socket);
-
+    close(acceptfd);
+    close(sockfd);
+ 
     return 0;
 }

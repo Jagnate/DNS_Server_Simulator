@@ -89,7 +89,7 @@ int main(int argc, char *argv[]){
 		}
 		//send(ServerSocketTCP,&recvMsgSize,2,0);
 		char TCPBuffer[1024];
-		unsigned short length = ntohs(recvMsgSize);
+		unsigned short length = htons(recvMsgSize);
 		memcpy(TCPBuffer,&length,2);
 		memcpy(TCPBuffer+2,recv_buffer,2+recvMsgSize);
         ret = send(ServerSocketTCP,TCPBuffer,2+recvMsgSize,0);

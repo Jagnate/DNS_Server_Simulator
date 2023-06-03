@@ -89,7 +89,7 @@ int CreateHeader(struct DNS_Header *header_section,
     memset(header_section, 0, sizeof(struct DNS_Header));
 	//ID随机random
 	//srandom(time(NULL)); 
-    if(queryNum!=0x0000&answerNum==0x0000){
+    if(queryNum!=0x0000&&answerNum==0x0000){
         header_section->id = htons(random());
     }else{
 	    header_section->id = htons(id);        
@@ -222,21 +222,17 @@ void PutDomainName(char *buffer,int *buffer_pointer, char *str){
 }
 
 void EncodeHeader(struct DNS_Header *header,char *buffer,int *buffer_pointer){
-    Put16Bits(buffer,buffer_pointer,header->id);
-    Put16Bits(buffer,buffer_pointer,header->tag);
-    Put16Bits(buffer,buffer_pointer,header->queryNum);
-    Put16Bits(buffer,buffer_pointer,header->answerNum);
-    Put16Bits(buffer,buffer_pointer,header->authorNum);
-    Put16Bits(buffer,buffer_pointer,header->addNum);
+    memcpy(buffer,header,12);
+    *buffer_pointer+=12;
 }
 
 void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
-    char *domain_name;
-	int lengthOfEncodedDomain = strlen(RR->name)+2;
-	domain_name = malloc(lengthOfEncodedDomain);
+    char *domain_name = RR->name;
+	// int lengthOfEncodedDomain = strlen(RR->name)+2;
+	// domain_name = malloc(lengthOfEncodedDomain);
 	 
 	EncodeDomain(domain_name,RR->name);
-	memcpy(domain_name,domain_value,lengthOfEncodedDomain);
+	//memcpy(domain_name,domain_value,lengthOfEncodedDomain);
 	
 	
     PutDomainName(buffer,buffer_pointer,domain_name); 
@@ -266,7 +262,7 @@ void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
 		rdata = malloc(lengthOfEncodedDomain2);
 		//printf("encodedomain:[%s]\n",encodeDomain(resource_record->rdata)); //encodeDomain函数周期性抽风 测试文件在test4
 		EncodeDomain(rdata,RR->rdata);
-		memcpy(rdata,domain_value,lengthOfEncodedDomain2);   
+		//memcpy(rdata,domain_value,lengthOfEncodedDomain2);   
 		//printf("rdata:[%s]\n",rdata);    //这里已经错误
 		PutDomainName(buffer,buffer_pointer,rdata); 
 	}
@@ -335,14 +331,14 @@ void DecodeQuery(struct DNS_Query *query, char *buffer,int *buffer_pointer){
 }
 
 void PrintHeader(struct DNS_Header *header){
-	printf("=======DNS HEADER INFOMATION=======\n");
-	printf("ID:                   %d\n",header->id);
-	printf("TAG:                  0x%x\n",header->tag);
-	printf("QueryNum:             %d\n",header->queryNum);
-	printf("AnswerNum:            %d\n",header->answerNum);
-	printf("AuthorNum:            %d\n",header->authorNum);
-	printf("AddNum:               %d\n",header->addNum);
-	//printf("===================================\n");
+    printf("=======DNS HEADER INFOMATION=======\n");
+    printf("ID:                   %d\n",ntohs(header->id));
+    printf("TAG:                  0x%x\n",ntohs(header->tag));
+    printf("QueryNum:             %d\n",ntohs(header->queryNum));
+    printf("AnswerNum:            %d\n",ntohs(header->answerNum));
+    printf("AuthorNum:            %d\n",ntohs(header->authorNum));
+    printf("AddNum:               %d\n",ntohs(header->addNum));
+    printf("===================================\n");
 }
 
 void PrintRR(struct DNS_RR *resource_record){

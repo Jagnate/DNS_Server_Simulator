@@ -74,6 +74,8 @@ int main(){
     close(sockfd);
 
     recv_header = malloc(sizeof(DH));
+    unsigned short buf_len;
+    buf_len=Get16Bits(recv_buffer,&recv_buf_pointer);
     DecodeHeader(recv_header,recv_buffer,&recv_buf_pointer);
     recv_query=malloc(sizeof(DQ));
     PrintHeader(recv_header);
@@ -103,7 +105,7 @@ int main(){
                 struct DNS_Header *header;
                 header = malloc(sizeof(DH));
                 unsigned short tag = CreateTag(1,0,1,0,0,0);
-                CreateHeader(header,0x1235,tag,0,0,1,1);
+                CreateHeader(header,recv_header->id,tag,0,0,1,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 PrintHeader(header);
                 
@@ -161,7 +163,8 @@ int main(){
 		}
 		//send(ServerSocketTCP,&recvMsgSize,2,0);
 		char TCPBuffer[1024];
-		unsigned short length = ntohs(send_buf_pointer);
+		unsigned short length = htons(send_buf_pointer);
+        printf("%d",send_buf_pointer);
 		memcpy(TCPBuffer,&length,2);
 		memcpy(TCPBuffer+2,send_buffer,2+send_buf_pointer);
         ret = send(ServerSocketTCP,TCPBuffer,2+send_buf_pointer,0);

@@ -21,15 +21,7 @@
 
 int main(int argc, char *argv[]){
 
-    int sock;
-	struct sockaddr_in ServAddr;
-	//struct sockaddr_in fromAddr;
-	
-	char RequestBuffer[1024];
-	unsigned short ServPort;
-	//unsigned int fromSize;
-
-	memset(RequestBuffer,0,1024);
+    
 
     if(argc != 3)
 	{
@@ -38,16 +30,22 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
-    ServPort = 53;
-
+	int sock;
+	struct sockaddr_in ServAddr;
+	//struct sockaddr_in fromAddr;
+	
+	char RequestBuffer[1024];
+	unsigned short ServPort;
+	//unsigned int fromSize;
+	memset(RequestBuffer,0,1024);
     /* Create a datagram/UDP socekt */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
 		printf("socket() failed.\n");
 	/* Construct the server address structure */
 	memset(&ServAddr, 0, sizeof(ServAddr));
 	ServAddr.sin_family = AF_INET;
-	ServAddr.sin_addr.s_addr = inet_addr("127.1.1.1");
-	ServAddr.sin_port = htons(ServPort);
+	ServAddr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
+	ServAddr.sin_port = htons(SERVER_PORT);
 
 	/* Create header and query */
 	struct DNS_Header header_section = {0};
@@ -64,5 +62,9 @@ int main(int argc, char *argv[]){
 			(struct sockaddr *) &ServAddr, sizeof(ServAddr));
 	/* null-terminate the received data */
 	close(sock);
+
+	/* Receive a datagram/UDP socekt */
+
+
 	return 0;
 }

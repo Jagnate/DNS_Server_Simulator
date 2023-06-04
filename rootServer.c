@@ -104,7 +104,7 @@ int main(){
                 //生成头
                 struct DNS_Header *header;
                 header = malloc(sizeof(DH));
-                unsigned short tag = CreateTag(1,0,1,0,0,0);
+                unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
                 CreateHeader(header,recv_header->id,tag,0,0,1,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 PrintHeader(header);

@@ -70,6 +70,11 @@ int main(){
 		memset(UDP_buffer,0,1024);
 		int UDP_buffer_pointer = 0;
 		memcpy(UDP_buffer,recv_buffer,UDP_msg_size);
+
+	struct DNS_Header *recv_header = malloc(sizeof(DH));
+	struct DNS_RR *author_record = malloc(sizeof(DR));
+	struct DNS_RR *add_record = malloc(sizeof(DR));
+	struct DNS_RR *ans_record = malloc(sizeof(DR));
 	while(1){
 		/* Send query using TCP */
 		/* Create socket for sending/receiving datagrams*/
@@ -146,16 +151,13 @@ int main(){
 		close(acceptfd);
 		close(sockfd);
 
-		struct DNS_Header *recv_header = malloc(sizeof(DH));
-		struct DNS_RR *author_record = malloc(sizeof(DR));
-		struct DNS_RR *add_record = malloc(sizeof(DR));
+		
 		int recv_buffer_pointer = 0;
 		//判断RR如果不成功则再建立TCP到下一级
 		unsigned short buf_len;
 		buf_len=Get16Bits(recv_buffer,&recv_buffer_pointer);
 		DecodeHeader(recv_header,recv_buffer,&recv_buffer_pointer);
-		DecodeRR(author_record, recv_buffer,&recv_buffer_pointer);
-		DecodeRR(add_record, recv_buffer,&recv_buffer_pointer);
+		
 		memcpy(next_server_ip,add_record->rdata,sizeof(add_record->rdata));
 		if(((recv_header->tag)&(0x0003))==0x0003){
 			struct DNS_Header *response_header = {0};
@@ -171,12 +173,14 @@ int main(){
 			struct DNS_Header *response_header = {0};
 			struct DNS_Header *temp_header = {0}; //最开始的UDP header
 			struct DNS_Query *temp_query = {0};
+			DecodeRR(ans_record,recv_buffer,&recv_buffer_pointer);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);
 			DecodeQuery(temp_query,UDP_buffer,&UDP_buffer_pointer);
 			if(temp_query->qtype==TYPE_A){
 				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,1);
 				EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 				EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
+				EncodeRR(ans_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(author_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add_record,response_buffer,&response_buffer_pointer);
 			}else{
@@ -185,12 +189,15 @@ int main(){
 				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,2);
 				EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 				EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
+				EncodeRR(ans_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(author_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add2_record,response_buffer,&response_buffer_pointer);
 			}
 			break;
 		}
+		DecodeRR(author_record, recv_buffer,&recv_buffer_pointer);
+		DecodeRR(add_record, recv_buffer,&recv_buffer_pointer);
 	}
 	//成功，建立UDP发回RR给client
 			int sock;

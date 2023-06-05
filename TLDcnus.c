@@ -100,15 +100,53 @@ int FirstFind(){
             struct DNS_Header *header;
             header=malloc(sizeof(DH));
             unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
-            if(strcmp(type,"MX")==0){
+            if(fileRR->type==TYPE_MX){
                 CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
+                fseek(RR,0,0);
+                struct DNS_RR *mxRR;
+                mxRR=malloc(sizeof(DR));
+                memset(mxRR,0,sizeof(DR));
+                mxRR->name=malloc(MAX_DOMAIN_LEN);
+                mxRR->rdata=malloc(MAX_DOMAIN_LEN);
+                while (fscanf(RR,"%s ",mxRR->name)!=EOF){
+                    fscanf(RR,"%d",&mxRR->ttl);
+                    char type[10],cls[10];
+                    fscanf(RR,"%s ",cls);
+                    fscanf(RR,"%s ",type);
+                    mxRR->type=TypeToNum(type);
+                    fscanf(RR,"%s\n",mxRR->rdata);
+                    if(strcmp(fileRR->rdata,mxRR->name)==0){
+                        CreateRR(mxRR,mxRR->name,mxRR->type,0x0001,mxRR->ttl,0x0000,mxRR->rdata);
+                        EncodeRR(mxRR,send_buffer,&send_buf_pointer);
+                        PrintRR(mxRR);
+                    }
+                }
             }
-            else if(strcmp(type,"CNAME")==0){
+            else if(fileRR->type==TYPE_CNAME){
                 CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
+                fseek(RR,0,0);
+                struct DNS_RR *cname_RR;
+                cname_RR=malloc(sizeof(DR));
+                memset(cname_RR,0,sizeof(DR));
+                cname_RR->name=malloc(MAX_DOMAIN_LEN);
+                cname_RR->rdata=malloc(MAX_DOMAIN_LEN);
+                while (fscanf(RR,"%s ",cname_RR->name)!=EOF){
+                    fscanf(RR,"%d",&cname_RR->ttl);
+                    char type[10],cls[10];
+                    fscanf(RR,"%s ",cls);
+                    fscanf(RR,"%s ",type);
+                    cname_RR->type=TypeToNum(type);
+                    fscanf(RR,"%s\n",cname_RR->rdata);
+                    if(strcmp(fileRR->rdata,cname_RR->name)==0){
+                        CreateRR(cname_RR,cname_RR->name,cname_RR->type,0x0001,cname_RR->ttl,0x0000,cname_RR->rdata);
+                        EncodeRR(cname_RR,send_buffer,&send_buf_pointer);
+                    }
+                }
+                
             }
             else{
                 CreateHeader(header,recv_header->id,tag,0,1,0,0);

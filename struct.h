@@ -1,15 +1,36 @@
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
-// #include <arpa/inet.h> 
+#include <unistd.h>
 #include <stdlib.h>
-#include <windows.h>
-#pragma comment(lib, "wsock32.lib")
+#include <arpa/inet.h>
+#include <stdlib.h>  
+#include <stdint.h>
+#include <unistd.h>  
+#include <sys/stat.h>  
+#include <fcntl.h>  
+#include <errno.h>   
+// #include<winsock.h>
+// #include<ws2tcpip.h>
+// #include<winsock2.h>
+// #include <windows.h>
+// #pragma comment(lib, "wsock32.lib")
 
 #define SERVER_PORT 53
-//root server ip
+//local server ip
 #define LOCAL_SERVER_IP "127.1.1.1"
 //root server ip
 #define ROOT_SERVER_IP "127.2.2.1"
+
+#define TLDcnus_SERVER_IP "127.3.3.1"
+
+#define TLDcom_SERVER_IP "127.4.4.1"
+
+#define SECONDedu_SERVER_IP "127.5.5.1"
+
+#define SECONDgov_SERVER_IP "127.6.6.1"
 
 #define MAX_DOMAIN_LEN 100
 
@@ -52,9 +73,9 @@ unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请�
                             unsigned short aa,       //[1]只在响应消息中有效。该位标示响应该消息的域名服务器是该域中的权威域名服务器。因为Answer Section中可能会有很多域名
                             unsigned short tc,       //[1]标示这条消息是否因为长度超过UDP数据包的标准长度512字节，如果超过512字节，该位被设置为1
                             unsigned short rd,       //[1]1 是否递归查询。1为递归查询
-                            unsigned short ra)       //[1]1 在响应消息中清除并设置。标示该DNS域名服务器是否支持递归查询。
-                            //unsigned short z,        //[3]000   冗余res 0
-                            //unsigned short rcode)    //[4]0000  成功的响应
+                            unsigned short ra,       //[1]1 在响应消息中清除并设置。标示该DNS域名服务器是否支持递归查询。
+                            unsigned short z,        //[3]000   冗余res 0
+                            unsigned short rcode)    //[4]0000  成功的响应
 {
 	unsigned short tag = 0;
 	if (qr==1)      tag = tag | 0x8000;
@@ -78,7 +99,7 @@ int CreateHeader(struct DNS_Header *header_section,
     memset(header_section, 0, sizeof(struct DNS_Header));
 	//ID随机random
 	//srandom(time(NULL)); 
-    if(queryNum!=0x0000&answerNum==0x0000){
+    if(queryNum!=0x0000&&answerNum==0x0000){
         header_section->id = htons(random());
     }else{
 	    header_section->id = htons(id);        
@@ -211,21 +232,17 @@ void PutDomainName(char *buffer,int *buffer_pointer, char *str){
 }
 
 void EncodeHeader(struct DNS_Header *header,char *buffer,int *buffer_pointer){
-    Put16Bits(buffer,buffer_pointer,header->id);
-    Put16Bits(buffer,buffer_pointer,header->tag);
-    Put16Bits(buffer,buffer_pointer,header->queryNum);
-    Put16Bits(buffer,buffer_pointer,header->answerNum);
-    Put16Bits(buffer,buffer_pointer,header->authorNum);
-    Put16Bits(buffer,buffer_pointer,header->addNum);
+    memcpy(buffer,header,12);
+    *buffer_pointer+=12;
 }
 
 void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
-    char *domain_name;
-	int lengthOfEncodedDomain = strlen(RR->name)+2;
-	domain_name = malloc(lengthOfEncodedDomain);
+    char *domain_name = RR->name;
+	// int lengthOfEncodedDomain = strlen(RR->name)+2;
+	// domain_name = malloc(lengthOfEncodedDomain);
 	 
 	EncodeDomain(domain_name,RR->name);
-	memcpy(domain_name,domain_value,lengthOfEncodedDomain);
+	//memcpy(domain_name,domain_value,lengthOfEncodedDomain);
 	
 	
     PutDomainName(buffer,buffer_pointer,domain_name); 
@@ -255,7 +272,7 @@ void EncodeRR(struct DNS_RR *RR,char *buffer, int *buffer_pointer){
 		rdata = malloc(lengthOfEncodedDomain2);
 		//printf("encodedomain:[%s]\n",encodeDomain(resource_record->rdata)); //encodeDomain函数周期性抽风 测试文件在test4
 		EncodeDomain(rdata,RR->rdata);
-		memcpy(rdata,domain_value,lengthOfEncodedDomain2);   
+		//memcpy(rdata,domain_value,lengthOfEncodedDomain2);   
 		//printf("rdata:[%s]\n",rdata);    //这里已经错误
 		PutDomainName(buffer,buffer_pointer,rdata); 
 	}
@@ -324,14 +341,14 @@ void DecodeQuery(struct DNS_Query *query, char *buffer,int *buffer_pointer){
 }
 
 void PrintHeader(struct DNS_Header *header){
-	printf("=======DNS HEADER INFOMATION=======\n");
-	printf("ID:                   %d\n",header->id);
-	printf("TAG:                  0x%x\n",header->tag);
-	printf("QueryNum:             %d\n",header->queryNum);
-	printf("AnswerNum:            %d\n",header->answerNum);
-	printf("AuthorNum:            %d\n",header->authorNum);
-	printf("AddNum:               %d\n",header->addNum);
-	//printf("===================================\n");
+    printf("=======DNS HEADER INFOMATION=======\n");
+    printf("ID:                   %d\n",ntohs(header->id));
+    printf("TAG:                  0x%x\n",ntohs(header->tag));
+    printf("QueryNum:             %d\n",ntohs(header->queryNum));
+    printf("AnswerNum:            %d\n",ntohs(header->answerNum));
+    printf("AuthorNum:            %d\n",ntohs(header->authorNum));
+    printf("AddNum:               %d\n",ntohs(header->addNum));
+    printf("===================================\n");
 }
 
 void PrintRR(struct DNS_RR *resource_record){

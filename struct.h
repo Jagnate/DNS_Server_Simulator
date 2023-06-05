@@ -24,6 +24,14 @@
 //root server ip
 #define ROOT_SERVER_IP "127.2.2.1"
 
+#define TLDcnus_SERVER_IP "127.3.3.1"
+
+#define TLDcom_SERVER_IP "127.4.4.1"
+
+#define SECONDedu_SERVER_IP "127.5.5.1"
+
+#define SECONDgov_SERVER_IP "127.6.6.1"
+
 #define MAX_DOMAIN_LEN 100
 
 #define TYPE_A 0x0001
@@ -345,12 +353,12 @@ void DecodeQuery(struct DNS_Query *query, char *buffer,int *buffer_pointer){
 
 void PrintHeader(struct DNS_Header *header){
     printf("=======DNS HEADER INFOMATION=======\n");
-    printf("ID:                   %d\n",ntohs(header->id));
-    printf("TAG:                  0x%x\n",ntohs(header->tag));
-    printf("QueryNum:             %d\n",ntohs(header->queryNum));
-    printf("AnswerNum:            %d\n",ntohs(header->answerNum));
-    printf("AuthorNum:            %d\n",ntohs(header->authorNum));
-    printf("AddNum:               %d\n",ntohs(header->addNum));
+    printf("ID:                   %d\n",header->id);
+    printf("TAG:                  0x%x\n",header->tag);
+    printf("QueryNum:             %d\n",header->queryNum);
+    printf("AnswerNum:            %d\n",header->answerNum);
+    printf("AuthorNum:            %d\n",header->authorNum);
+    printf("AddNum:               %d\n",header->addNum);
     printf("===================================\n");
 }
 
@@ -445,4 +453,8 @@ void EncodeQuery(struct DNS_Query *query_section,char *buffer,int *bufferPointer
 	
 	Put16Bits(buffer,bufferPointer,query_section->qtype);
 	Put16Bits(buffer,bufferPointer,query_section->qclass);
+}
+
+void printAns(){
+
 }

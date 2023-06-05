@@ -119,7 +119,7 @@ int main(){
                 //生成additon RR   A记录type=1
                 struct DNS_RR *addRR;
                 addRR = malloc(sizeof(DR));
-                CreateRR(addRR, domain, 1, 1, nextRR->ttl, 0, nextRR->rdata);
+                CreateRR(addRR, recv_query->name, 1, 1, nextRR->ttl, 0, nextRR->rdata);
                 EncodeRR(addRR,send_buffer,&send_buf_pointer);
                 PrintRR(addRR);
                 

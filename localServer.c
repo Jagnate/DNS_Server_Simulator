@@ -107,7 +107,7 @@ int main(){
 		char TCPBuffer[1024];
 		unsigned short length = htons(UDP_msg_size);
 		memcpy(TCPBuffer,&length,2);
-		memcpy(TCPBuffer+2,recv_buffer,2+UDP_msg_size);
+		memcpy(TCPBuffer+2,UDP_buffer,2+UDP_msg_size);
 		ret = send(ServerSocketTCP,TCPBuffer,2+UDP_msg_size,0);
 		close(ServerSocketTCP);
 		//Receive from root RR
@@ -150,33 +150,40 @@ int main(){
 
 		close(acceptfd);
 		close(sockfd);
-
+		printf("Receive Successfully\n");
 		
 		int recv_buffer_pointer = 0;
 		//判断RR如果不成功则再建立TCP到下一级
 		unsigned short buf_len;
 		buf_len=Get16Bits(recv_buffer,&recv_buffer_pointer);
 		DecodeHeader(recv_header,recv_buffer,&recv_buffer_pointer);
-		
-		memcpy(next_server_ip,add_record->rdata,sizeof(add_record->rdata));
+		PrintHeader(recv_header);
+		unsigned short num = 1;
 		if(((recv_header->tag)&(0x0003))==0x0003){
-			struct DNS_Header *response_header = {0};
-			struct DNS_Header *temp_header = {0}; //最开始的UDP header
-			struct DNS_Query *temp_query = {0};
+			printf("if1\n");
+			struct DNS_Header *response_header = malloc(sizeof(DH));
+			struct DNS_Header *temp_header = malloc(sizeof(DH)); //最开始的UDP header
+			struct DNS_Query *temp_query = malloc(sizeof(DQ));
 			CreateHeader(response_header,recv_header->id,recv_header->tag,1,0,0,0);
 			//EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);
 			DecodeQuery(temp_query,UDP_buffer,&UDP_buffer_pointer);
 			MergeRequest(response_header,temp_query,response_buffer,UDP_msg_size);
 			break;
-		}else if(recv_header->answerNum==1){
-			struct DNS_Header *response_header = {0};
-			struct DNS_Header *temp_header = {0}; //最开始的UDP header
-			struct DNS_Query *temp_query = {0};
+		}else if(recv_header->answerNum==num){
+			printf("else2\n");
+			struct DNS_Header *response_header = malloc(sizeof(DH));
+			struct DNS_Header *temp_header = malloc(sizeof(DH)); //最开始的UDP header
+			struct DNS_Query *temp_query = malloc(sizeof(DQ));
+			UDP_buffer_pointer = 0;
 			DecodeRR(ans_record,recv_buffer,&recv_buffer_pointer);
+			PrintRR(ans_record);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);
+			PrintHeader(temp_header);
 			DecodeQuery(temp_query,UDP_buffer,&UDP_buffer_pointer);
+			printf("Query!!!\n");
 			if(temp_query->qtype==TYPE_A){
+				printf("==A\n");
 				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,1);
 				EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 				EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
@@ -184,6 +191,7 @@ int main(){
 				EncodeRR(author_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add_record,response_buffer,&response_buffer_pointer);
 			}else{
+				printf("==else\n");
 				struct DNS_RR *add2_record = malloc(sizeof(DR));
 				DecodeRR(add2_record, recv_buffer,&recv_buffer_pointer);
 				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,2);
@@ -197,29 +205,44 @@ int main(){
 			break;
 		}
 		DecodeRR(author_record, recv_buffer,&recv_buffer_pointer);
+		PrintRR(author_record);
 		DecodeRR(add_record, recv_buffer,&recv_buffer_pointer);
+		next_server_ip = add_record->rdata;
+		//memcpy(next_server_ip,add_record->rdata,sizeof(add_record->rdata));
+		printf("END\n");
 	}
 	//成功，建立UDP发回RR给client
-			int sock;
-			struct sockaddr_in client_addr;
-			// char response_buffer[1024];
-			// //unsigned int fromSize;
-			// memset(response_buffer,0,1024);
-			/* Create a datagram/UDP socekt */
-			if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-				printf("socket() failed.\n");
-			/* Construct the server address structure */
-			memset(&client_addr, 0, sizeof(client_addr));
-			client_addr.sin_family = AF_INET;
-			client_addr.sin_addr.s_addr = inet_addr(CLIENT_IP);
-			client_addr.sin_port = htons(SERVER_PORT);
+	int sock;
+	struct sockaddr_in client_addr;
+	struct sockaddr_in local_addr = {0}; 
+    local_addr.sin_family = AF_INET;
+	local_addr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
+ 
+    socklen_t local_serveraddr_len = sizeof(local_addr);
+	/* Create a datagram/UDP socekt */
+	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+		printf("socket() failed.\n");
+    //绑定
+    if(bind(sock, (struct sockaddr *)&local_addr, local_serveraddr_len)<0){
+        printf("bind error\n");
+        exit(1);
+    }
+	// char response_buffer[1024];
+	// //unsigned int fromSize;
+	// memset(response_buffer,0,1024);
+	
+	/* Construct the server address structure */
+	memset(&client_addr, 0, sizeof(client_addr));
+	client_addr.sin_family = AF_INET;
+	client_addr.sin_addr.s_addr = inet_addr(CLIENT_IP);
+	client_addr.sin_port = htons(SERVER_PORT);
 
-			/* Create Response */
-			/* Send the string to the server*/
-			sendto(sock,response_buffer, UDP_msg_size, 0,
-					(struct sockaddr *) &client_addr, sizeof(client_addr));
-			/* null-terminate the received data */
-			close(sock);
+	/* Create Response */
+	/* Send the string to the server*/
+	sendto(sock,response_buffer, response_buffer_pointer, 0,
+			(struct sockaddr *) &client_addr, sizeof(client_addr));
+	/* null-terminate the received data */
+	close(sock);
     return 0;
 
 }

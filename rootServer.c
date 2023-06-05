@@ -1,3 +1,22 @@
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <stdlib.h>  
+#include <stdint.h>
+#include <unistd.h>  
+#include <sys/stat.h>  
+#include <fcntl.h>  
+#include <errno.h>   
+// #include<winsock.h>
+// #include<winsock2.h>
+// #include <windows.h>
+// #pragma comment(lib, "wsock32.lib")
+
 #include "struct.h" 
  
 int main(){
@@ -100,7 +119,7 @@ int main(){
                 //生成additon RR   A记录type=1
                 struct DNS_RR *addRR;
                 addRR = malloc(sizeof(DR));
-                CreateRR(addRR, domain, 1, 1, nextRR->ttl, 0, nextRR->rdata);
+                CreateRR(addRR, recv_query->name, 1, 1, nextRR->ttl, 0, nextRR->rdata);
                 EncodeRR(addRR,send_buffer,&send_buf_pointer);
                 PrintRR(addRR);
                 
@@ -110,53 +129,46 @@ int main(){
         CutDomain(&recv_query->name);	
     }
     printf("Not found.\n");
-    //没找到
-    struct DNS_Header *header;
-    header = malloc(sizeof(DH));
-    unsigned short tag = CreateTag(1,0,1,0,0,0,0,1);
-    CreateHeader(header,recv_header->id,tag,0,0,0,0);
-    EncodeHeader(header,send_buffer,&send_buf_pointer);
-    PrintHeader(header);
-
+    //没找到应该回什么？
     out:
     fclose(RR);
 
 
     /* Send RR back to local using TCP */
-    /* Create socket for sending/receiving datagrams*/
-    int ServerSocketTCP;
-    /* Create socket for sending/receiving datagrams*/
-    if((ServerSocketTCP = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-        printf("socket() failed.\n");
-    /* Construct local address structure*/
-    struct sockaddr_in ServAddrTCP;
-    memset(&ServAddrTCP, 0, sizeof(ServAddrTCP));
-    ServAddrTCP.sin_family = AF_INET;
-    ServAddrTCP.sin_addr.s_addr = inet_addr(ROOT_SERVER_IP);
-    /* Bind to the local address*/
-    if ((bind(ServerSocketTCP, (struct sockaddr *) &ServAddrTCP,
-        sizeof(ServAddrTCP))) < 0){
-            printf("bind() failded.\n");
-            exit(1);
-    }
-    struct sockaddr_in localServerAddr;
-    memset(&localServerAddr, 0, sizeof(localServerAddr));
-    localServerAddr.sin_family = AF_INET;
-    localServerAddr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
-    localServerAddr.sin_port = htons(SERVER_PORT);
-    unsigned int localAddrlen = sizeof(localServerAddr);
-    int ret;
-    if((ret = connect(ServerSocketTCP, (const struct sockaddr *)&localServerAddr, sizeof(localServerAddr)))==-1){
-        printf("Accept Error,\n");
-    }
-    //send(ServerSocketTCP,&recvMsgSize,2,0);
-    char TCPBuffer[1024];
-    unsigned short length = htons(send_buf_pointer);
-    printf("%d",send_buf_pointer);
-    memcpy(TCPBuffer,&length,2);
-    memcpy(TCPBuffer+2,send_buffer,2+send_buf_pointer);
-    ret = send(ServerSocketTCP,TCPBuffer,2+send_buf_pointer,0);
-    close(ServerSocketTCP);
+        /* Create socket for sending/receiving datagrams*/
+		int ServerSocketTCP;
+		/* Create socket for sending/receiving datagrams*/
+		if((ServerSocketTCP = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+			printf("socket() failed.\n");
+		/* Construct local address structure*/
+		struct sockaddr_in ServAddrTCP;
+		memset(&ServAddrTCP, 0, sizeof(ServAddrTCP));
+		ServAddrTCP.sin_family = AF_INET;
+		ServAddrTCP.sin_addr.s_addr = inet_addr(ROOT_SERVER_IP);
+		/* Bind to the local address*/
+		if ((bind(ServerSocketTCP, (struct sockaddr *) &ServAddrTCP,
+			sizeof(ServAddrTCP))) < 0){
+				printf("bind() failded.\n");
+				exit(1);
+		}
+		struct sockaddr_in localServerAddr;
+		memset(&localServerAddr, 0, sizeof(localServerAddr));
+		localServerAddr.sin_family = AF_INET;
+		localServerAddr.sin_addr.s_addr = inet_addr(LOCAL_SERVER_IP);
+		localServerAddr.sin_port = htons(SERVER_PORT);
+		unsigned int localAddrlen = sizeof(localServerAddr);
+		int ret;
+		if((ret = connect(ServerSocketTCP, (const struct sockaddr *)&localServerAddr, sizeof(localServerAddr)))==-1){
+			printf("Accept Error,\n");
+		}
+		//send(ServerSocketTCP,&recvMsgSize,2,0);
+		char TCPBuffer[1024];
+		unsigned short length = htons(send_buf_pointer);
+        printf("%d",send_buf_pointer);
+		memcpy(TCPBuffer,&length,2);
+		memcpy(TCPBuffer+2,send_buffer,2+send_buf_pointer);
+        ret = send(ServerSocketTCP,TCPBuffer,2+send_buf_pointer,0);
+		close(ServerSocketTCP);
  
     return 0;
 }

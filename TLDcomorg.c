@@ -14,6 +14,12 @@ int recv_socket;
 struct sockaddr_in root_addr,cli_addr;
 unsigned int len;
 FILE *RR;
+
+void RecvTCP();
+void SendTCP();
+int FirstFind();
+void NotFound();
+
 int main(){
     
     RecvTCP();
@@ -99,18 +105,49 @@ int FirstFind(){
                 CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
+                fseek(RR,0,0);
+                struct DNS_RR *mxRR;
+                mxRR=malloc(sizeof(DR));
+                memset(mxRR,0,sizeof(DR));
+                while (fscanf(RR,"%s ",mxRR->name)!=EOF){
+                    fscanf(RR,"%d",&mxRR->ttl);
+                    char type[10],cls[10];
+                    fscanf(RR,"%s ",cls);
+                    fscanf(RR,"%s ",type);
+                    mxRR->type=TypeToNum(type);
+                    fscanf(RR,"%s\n",mxRR->rdata);
+                    if(strcmp(fileRR->rdata,mxRR->name)==0){
+                        EncodeRR(mxRR,send_buffer,&send_buf_pointer);
+                    }
+                }
             }
-            else if(strcmp(type,"CNAME")){
+            else if(strcmp(type,"CNAME")==0){
                 CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
+                fseek(RR,0,0);
+                struct DNS_RR *cname_RR;
+                cname_RR=malloc(sizeof(DR));
+                memset(cname_RR,0,sizeof(DR));
+                while (fscanf(RR,"%s ",cname_RR->name)!=EOF){
+                    fscanf(RR,"%d",&cname_RR->ttl);
+                    char type[10],cls[10];
+                    fscanf(RR,"%s ",cls);
+                    fscanf(RR,"%s ",type);
+                    cname_RR->type=TypeToNum(type);
+                    fscanf(RR,"%s\n",cname_RR->rdata);
+                    if(strcmp(fileRR->rdata,cname_RR->name)==0){
+                        EncodeRR(cname_RR,send_buffer,&send_buf_pointer);
+                    }
+                }
+                
             }
             else{
                 CreateHeader(header,recv_header->id,tag,0,1,0,0);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
             }
-            PinrtHeader(header);
+            PrintHeader(header);
             PrintRR(fileRR);
             find_flg=1;
             break;
@@ -134,7 +171,7 @@ int FirstFind(){
             if(strcmp(fileRR->rdata,addFileRR->name)==0){
                 printf("find mx rr.\n");
                 CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
-                EncodeRR(addFileRR,send_buffer,send_buf_pointer);
+                EncodeRR(addFileRR,send_buffer,&send_buf_pointer);
                 PrintRR(addFileRR);
                 break;;
             }

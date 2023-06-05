@@ -1,4 +1,5 @@
 edu.cn 86400 IN A 127.5.5.1
 gov.us 86400 IN A 127.6.6.1
+china.gov.cn 86400 IN CNAME china.cn
 china.cn 86400 IN A 202.130.245.42
 china.us 86400 IN A 86.105.245.69

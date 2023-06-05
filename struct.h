@@ -1,24 +1,24 @@
 #include <stdio.h>
+#include <string.h>
+// #include <arpa/inet.h> 
+#include <stdlib.h>
+//#include <windows.h>
+//#pragma comment(lib, "wsock32.lib")
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <stdlib.h>  
+#include <arpa/inet.h>  
 #include <stdint.h>
 #include <unistd.h>  
 #include <sys/stat.h>  
 #include <fcntl.h>  
 #include <errno.h>   
-// #include<winsock.h>
-// #include<ws2tcpip.h>
-// #include<winsock2.h>
-// #include <windows.h>
-// #pragma comment(lib, "wsock32.lib")
 
 #define SERVER_PORT 53
+//client ip
+#define CLIENT_IP "127.0.0.1"
 //local server ip
 #define LOCAL_SERVER_IP "127.1.1.1"
 //root server ip
@@ -74,7 +74,7 @@ unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请�
                             unsigned short tc,       //[1]标示这条消息是否因为长度超过UDP数据包的标准长度512字节，如果超过512字节，该位被设置为1
                             unsigned short rd,       //[1]1 是否递归查询。1为递归查询
                             unsigned short ra,       //[1]1 在响应消息中清除并设置。标示该DNS域名服务器是否支持递归查询。
-                            unsigned short z,        //[3]000   冗余res 0
+                            unsigned short z,        //[1]0   冗余res 0
                             unsigned short rcode)    //[4]0000  成功的响应
 {
 	unsigned short tag = 0;
@@ -84,6 +84,8 @@ unsigned short CreateTag(   unsigned short qr,       //[1]标示该消息是请�
 	if (tc==1)      tag = tag | 0x0200;
 	if (rd==1)      tag = tag | 0x0100;
 	if (ra==1)      tag = tag | 0x0080;
+	if (z ==1)		tag = tag | 0x0040;
+	if (rcode == 1)	tag = tag | 0x0003;
 	return tag;
 }
 
@@ -214,6 +216,15 @@ unsigned short Get16Bits(char *buffer,int *buffer_pointer){
     return ntohs(value);
 }
 
+unsigned int Get32Bits(char *buffer,int *bufferPointer)
+{
+	unsigned int value;
+	memcpy(&value,buffer + *bufferPointer,4);
+	*bufferPointer += 4;
+	
+	return ntohs(value);  
+}
+
 void Put16Bits(char *buffer,int *buffer_pointer, unsigned short value){
 	value = htons(value);
 	memcpy(buffer + *buffer_pointer,&value,2);
@@ -335,19 +346,19 @@ void DecodeQuery(struct DNS_Query *query, char *buffer,int *buffer_pointer){
 	DecodeDomain(domain_name);
 	memcpy(domain_name,domain_value,strlen(domain_name));  
 	
-	query->name = domain_name;
+	query->name = (unsigned char*)domain_name;
 	query->qtype = Get16Bits(buffer,buffer_pointer);
 	query->qclass = Get16Bits(buffer,buffer_pointer);
 }
 
 void PrintHeader(struct DNS_Header *header){
     printf("=======DNS HEADER INFOMATION=======\n");
-    printf("ID:                   %d\n",ntohs(header->id));
-    printf("TAG:                  0x%x\n",ntohs(header->tag));
-    printf("QueryNum:             %d\n",ntohs(header->queryNum));
-    printf("AnswerNum:            %d\n",ntohs(header->answerNum));
-    printf("AuthorNum:            %d\n",ntohs(header->authorNum));
-    printf("AddNum:               %d\n",ntohs(header->addNum));
+    printf("ID:                   %d\n",header->id);
+    printf("TAG:                  0x%x\n",header->tag);
+    printf("QueryNum:             %d\n",header->queryNum);
+    printf("AnswerNum:            %d\n",header->answerNum);
+    printf("AuthorNum:            %d\n",header->authorNum);
+    printf("AddNum:               %d\n",header->addNum);
     printf("===================================\n");
 }
 
@@ -379,4 +390,71 @@ void CutDomain(char** domain_pointer){
 			break;
 		}
 	}
+}
+
+void DecodeRR(struct DNS_RR *resource_record,char *buffer,int *bufferPointer)
+{
+	//从缓冲区读出编码过的域名
+	char* domain_name = malloc(MAX_DOMAIN_LEN); 
+	memset(domain_name,0,MAX_DOMAIN_LEN);
+	int lengthOfDomain=0;
+	GetDomainName(buffer,bufferPointer,&lengthOfDomain);
+	memcpy(domain_name,domain_value,lengthOfDomain);
+	//解码域名
+	
+	DecodeDomain(domain_name);
+	memcpy(domain_name,domain_value,strlen(domain_name));  
+	resource_record->name = domain_name;
+	
+	resource_record->type = Get16Bits(buffer,bufferPointer);
+	resource_record->_class = Get16Bits(buffer,bufferPointer);
+	resource_record->ttl = Get32Bits(buffer,bufferPointer);   
+	resource_record->data_len = Get16Bits(buffer,bufferPointer);
+	if (resource_record->type==0x000F) 
+			resource_record->pre = Get16Bits(buffer,bufferPointer);
+	
+	
+	//如果发送的是IP（类型为A），则读出IP 。 不能采用get put方法，因为inet_ntoa方法已经更换字节序
+	if(resource_record->type == 0x0001)   
+	{
+		unsigned int rdata;
+		memcpy(&rdata,buffer + *bufferPointer,4);
+		*bufferPointer += 4;
+		
+		struct in_addr in;
+		memcpy(&in, &rdata, 4);  
+		
+		resource_record->rdata = malloc(MAX_DOMAIN_LEN);
+		char *temp =  inet_ntoa(in);
+		memcpy(resource_record->rdata,temp,strlen(temp)+1);   //+1是为了包含末尾0    
+	}else{
+		//如果发送的是域名，则调用域名解码（类型为CNAME NS MX）
+		//从缓冲区读出编码过的域名
+		char* rdata = malloc(MAX_DOMAIN_LEN); 
+		int lengthOfDomain2=0;
+		GetDomainName(buffer,bufferPointer,&lengthOfDomain2);
+		memcpy(rdata,domain_value,lengthOfDomain2);
+		//解码域名
+		DecodeDomain(rdata);
+		memcpy(rdata,domain_value,strlen(rdata));  
+		resource_record->rdata = rdata;
+	}
+}
+
+void EncodeQuery(struct DNS_Query *query_section,char *buffer,int *bufferPointer)
+{
+	//先计算用decodeDomain得到字符串
+	//再用strlen计算字符串长度为点语法name长度+2（头尾多了一个数字）
+	//再发送 
+	char *domain_name = query_section->name;
+	EncodeDomain(domain_name,query_section->name);
+
+	PutDomainName(buffer,bufferPointer,domain_name); 
+	
+	Put16Bits(buffer,bufferPointer,query_section->qtype);
+	Put16Bits(buffer,bufferPointer,query_section->qclass);
+}
+
+void printAns(){
+
 }

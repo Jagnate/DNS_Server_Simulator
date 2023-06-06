@@ -8,7 +8,8 @@
 2.PTR  
 3.Cache  
 4.Multi-Query  
-5.Compress Pointer
+5.Compress Pointer  
+6.CMake file
 ## To run this file, you need:
 
 ## Project describtion:

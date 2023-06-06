@@ -9,7 +9,7 @@
 ~~3.Cache~~  
 4.Multi-Query  
 5.Compress Pointer  
-6.CMake file. 
+6.CMake file  
 7.Print Ans
 ## To run this file, you need:
 

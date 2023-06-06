@@ -1,20 +1,20 @@
 #include <stdio.h>
 #include <string.h>
-// #include <arpa/inet.h> 
 #include <stdlib.h>
-//#include <windows.h>
-//#pragma comment(lib, "wsock32.lib")
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+// #include <sys/socket.h>
+// #include <sys/un.h>
+// #include <arpa/inet.h>  
 #include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>  
 #include <stdint.h>
 #include <unistd.h>  
 #include <sys/stat.h>  
 #include <fcntl.h>  
-#include <errno.h>   
+#include <errno.h>
+#include <windows.h>
+#include <WS2tcpip.h>
+#pragma comment(lib, "wsock32.lib")
 
 #define SERVER_PORT 53
 //client ip

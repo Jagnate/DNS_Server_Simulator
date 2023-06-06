@@ -1,22 +1,3 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <stdlib.h>  
-#include <stdint.h>
-#include <unistd.h>  
-#include <sys/stat.h>  
-#include <fcntl.h>  
-#include <errno.h>   
-// #include<winsock.h>
-// #include<winsock2.h>
-// #include <windows.h>
-// #pragma comment(lib, "wsock32.lib")
-
 #include "struct.h" 
  
 int main(){

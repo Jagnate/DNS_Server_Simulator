@@ -5,7 +5,7 @@
 
 ## To do:
   Trace 
-  PTR  
+  PTR 
   Cache 
   Multi-Query 
   Compress Pointer

@@ -4,11 +4,11 @@
 🎉Contributor: Jin, Zhendong  
 
 ## To do:
-  Trace. 
-  PTR. 
-  Cache. 
-  Multi-Query. 
-  Compress Pointer
+1.Trace  
+2.PTR  
+3.Cache  
+4.Multi-Query  
+5.Compress Pointer
 ## To run this file, you need:
 
 ## Project describtion:

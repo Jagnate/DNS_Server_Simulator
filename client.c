@@ -2,8 +2,6 @@
 
 int main(int argc, char *argv[]){
 
-    
-
     if(argc != 3)
 	{
 		printf("Usage: %s <DNS> <Type>\n",

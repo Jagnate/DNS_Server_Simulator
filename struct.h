@@ -12,6 +12,7 @@
 #include <sys/stat.h>  
 #include <fcntl.h>  
 #include <errno.h>
+#include <time.h>
 // #include <windows.h>
 // #include <WS2tcpip.h>
 // #pragma comment(lib, "wsock32.lib")
@@ -100,7 +101,7 @@ int CreateHeader(struct DNS_Header *header_section,
     if(header_section == NULL) return -1;
     memset(header_section, 0, sizeof(struct DNS_Header));
 	//ID随机random
-	//srandom(time(NULL)); 
+	srandom(time(NULL)); 
     if(queryNum!=0x0000&&answerNum==0x0000){
         header_section->id = htons(random());
     }else{
@@ -222,7 +223,7 @@ unsigned int Get32Bits(char *buffer,int *bufferPointer)
 	memcpy(&value,buffer + *bufferPointer,4);
 	*bufferPointer += 4;
 	
-	return ntohs(value);  
+	return ntohl(value);  
 }
 
 void Put16Bits(char *buffer,int *buffer_pointer, unsigned short value){
@@ -231,8 +232,8 @@ void Put16Bits(char *buffer,int *buffer_pointer, unsigned short value){
 	*buffer_pointer += 2;
 }
 
-void Put32Bits(char *buffer,int *buffer_pointer, unsigned short value){
-	value = htons(value);
+void Put32Bits(char *buffer,int *buffer_pointer, unsigned int value){
+	value = htonl(value);
 	memcpy(buffer + *buffer_pointer,&value,4);
 	*buffer_pointer += 4;
 }
@@ -362,6 +363,13 @@ void PrintHeader(struct DNS_Header *header){
     printf("===================================\n");
 }
 
+void PrintQuery(struct DNS_Query *query_section){
+	printf("=======DNS QUERY INFOMATION=======\n");
+	printf("Name:                 [%s]\n",query_section->name);
+	printf("Type:                 [%s]\n",numToType(query_section->qtype));
+	printf("Class:                [IN]\n");
+}
+
 void PrintRR(struct DNS_RR *resource_record){
 	//转码utf8
 	//wchar_t *name;
@@ -453,8 +461,4 @@ void EncodeQuery(struct DNS_Query *query_section,char *buffer,int *bufferPointer
 	
 	Put16Bits(buffer,bufferPointer,query_section->qtype);
 	Put16Bits(buffer,bufferPointer,query_section->qclass);
-}
-
-void printAns(){
-
 }

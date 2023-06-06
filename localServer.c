@@ -15,11 +15,15 @@ FILE *RR;
 
 int main(){
 	
-
+	while(1){
     int recvMsgSize;
-
+	
 	memset(request_buffer,0,1024);
     memset(recv_buffer,0,1024);
+	memset(UDP_buffer,0,1024);
+	memset(response_buffer,0,1024);
+	UDP_buffer_pointer = 0;
+	response_buffer_pointer =0;
 
 	int ServerSocket;
     /* Create socket for sending/receiving datagrams*/
@@ -67,7 +71,16 @@ int main(){
 	struct DNS_RR *author_record = malloc(sizeof(DR));
 	struct DNS_RR *add_record = malloc(sizeof(DR));
 	struct DNS_RR *ans_record = malloc(sizeof(DR));
+	struct DNS_RR *traceRR[5];
+	traceRR[0] = malloc(sizeof(DR));
+	traceRR[1] = malloc(sizeof(DR));
+	traceRR[2] = malloc(sizeof(DR));
+	traceRR[3] = malloc(sizeof(DR));
+	traceRR[4] = malloc(sizeof(DR));
+	int trace_num=0;
+	CreateRR(traceRR[0],"RootServer",2,1,86400,0,ROOT_SERVER_IP);
 	while(1){
+		trace_num++;
 		/* Send query using TCP */
 		/* Create socket for sending/receiving datagrams*/
 		int ServerSocketTCP;
@@ -158,45 +171,53 @@ int main(){
 			CreateHeader(response_header,recv_header->id,recv_header->tag,1,0,0,0);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);
 			DecodeQuery(temp_query,UDP_buffer,&UDP_buffer_pointer);
-			MergeRequest(response_header,temp_query,response_buffer,UDP_msg_size);
+			//MergeRequest(response_header,temp_query,response_buffer,UDP_msg_size);
+			EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
+			EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
 			break;
 		}else if(recv_header->answerNum==num){
 			struct DNS_Header *response_header = malloc(sizeof(DH));
 			struct DNS_Header *temp_header = malloc(sizeof(DH)); //最开始的UDP header
 			struct DNS_Query *temp_query = malloc(sizeof(DQ));
 			UDP_buffer_pointer = 0;
-			DecodeQuery(temp_query,recv_buffer,&recv_buffer_pointer);
 			DecodeRR(ans_record,recv_buffer,&recv_buffer_pointer);
 			PrintRR(ans_record);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);
 			PrintHeader(temp_header);
 			DecodeQuery(temp_query,UDP_buffer,&UDP_buffer_pointer);
 			if(temp_query->qtype==TYPE_A){
-				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,1);
+				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,1+trace_num);
 				EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 				EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
 				EncodeRR(ans_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(author_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add_record,response_buffer,&response_buffer_pointer);
+				for(int i=0;i<trace_num;i++){
+					EncodeRR(traceRR[i],response_buffer,&response_buffer_pointer);
+				}
 				WriteRR(ans_record);
 			}else{
 				struct DNS_RR *add2_record = malloc(sizeof(DR));
 				DecodeRR(add2_record, recv_buffer,&recv_buffer_pointer);
-				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,2);
+				CreateHeader(response_header,recv_header->id,recv_header->tag,1,1,1,2+trace_num);
 				EncodeHeader(response_header,response_buffer,&response_buffer_pointer);
 				EncodeQuery(temp_query,response_buffer,&response_buffer_pointer);
 				EncodeRR(ans_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(author_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add_record,response_buffer,&response_buffer_pointer);
 				EncodeRR(add2_record,response_buffer,&response_buffer_pointer);
+				for(int i=0;i<trace_num;i++){
+					EncodeRR(traceRR[i],response_buffer,&response_buffer_pointer);
+				}
 				WriteRR(ans_record);
-				WriteRR(add_record);
+				WriteRR(add2_record);
 			}
 			break;
 		}
 		DecodeRR(author_record, recv_buffer,&recv_buffer_pointer);
 		PrintRR(author_record);
 		DecodeRR(add_record, recv_buffer,&recv_buffer_pointer);
+		CreateRR(traceRR[trace_num],add_record->name,add_record->type,add_record->_class,add_record->ttl,add_record->pre,add_record->rdata);
 		next_server_ip = add_record->rdata;
 	}
 	out:
@@ -230,6 +251,7 @@ int main(){
 			(struct sockaddr *) &client_addr, sizeof(client_addr));
 	/* null-terminate the received data */
 	close(sock);
+	}
     return 0;
 
 }
@@ -292,6 +314,7 @@ int FirstFind(){
                     fscanf(RR,"%s ",type);
                     mxRR->type=TypeToNum(type);
                     fscanf(RR,"%s\n",mxRR->rdata);
+					printf("%s %s",fileRR->rdata,mxRR->name);
                     if(strcmp(fileRR->rdata,mxRR->name)==0){
                         CreateRR(mxRR,mxRR->name,mxRR->type,0x0001,mxRR->ttl,0x0000,mxRR->rdata);
                         EncodeRR(mxRR,response_buffer,&response_buffer_pointer);
@@ -336,29 +359,29 @@ int FirstFind(){
             break;
         }
     }
-    //回位
-    fseek(RR,0,0);
-    //MX类型
-    if(fileRR->type!=TYPE_A){
-        struct DNS_RR *addFileRR;
-        addFileRR=malloc(sizeof(DR));
-        addFileRR->name=malloc(MAX_DOMAIN_LEN);
-        addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
-        while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
-            fscanf(RR,"%d ",&addFileRR->ttl);
-            char type[10],cls[10];
-            fscanf(RR,"%s ",cls);
-            fscanf(RR,"%s ",type);
-            addFileRR->type=TypeToNum(type);
-            fscanf(RR,"%s\n",addFileRR->rdata);
-            if(strcmp(fileRR->rdata,addFileRR->name)==0){
-                printf("find mx rr.\n");
-                CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
-                EncodeRR(addFileRR,response_buffer,&response_buffer_pointer);
-                PrintRR(addFileRR);
-                break;;
-            }
-        }
-    }
+    // //回位
+    // fseek(RR,0,0);
+    // //MX类型
+    // if(fileRR->type!=TYPE_A){
+    //     struct DNS_RR *addFileRR;
+    //     addFileRR=malloc(sizeof(DR));
+    //     addFileRR->name=malloc(MAX_DOMAIN_LEN);
+    //     addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
+    //     while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
+    //         fscanf(RR,"%d ",&addFileRR->ttl);
+    //         char type[10],cls[10];
+    //         fscanf(RR,"%s ",cls);
+    //         fscanf(RR,"%s ",type);
+    //         addFileRR->type=TypeToNum(type);
+    //         fscanf(RR,"%s\n",addFileRR->rdata);
+    //         if(strcmp(fileRR->rdata,addFileRR->name)==0){
+    //             printf("find mx rr.\n");
+    //             CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
+    //             EncodeRR(addFileRR,response_buffer,&response_buffer_pointer);
+    //             PrintRR(addFileRR);
+    //             break;;
+    //         }
+    //     }
+    // }
     return find_flg; 
 }

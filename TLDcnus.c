@@ -10,9 +10,6 @@ int recvMsgSize = 0;
 char send_buffer[1024] = {0};
 int send_buf_pointer=0;
 int recv_buf_pointer=0;
-int recv_socket;
-struct sockaddr_in root_addr,cli_addr;
-unsigned int len;
 FILE *RR;
 
 void RecvTCP();
@@ -21,24 +18,33 @@ int FirstFind();
 void SecondFind(char* domain);
 
 int main(){
-    //接收TCP信息
-    RecvTCP();
-    //解析header和query
-    recv_header = malloc(sizeof(DH));
-    unsigned short buf_len;
-    buf_len=Get16Bits(recv_buffer,&recv_buf_pointer);
-    DecodeHeader(recv_header,recv_buffer,&recv_buf_pointer);
-    recv_query=malloc(sizeof(DQ));
-    PrintHeader(recv_header);
-    DecodeQuery(recv_query,recv_buffer,&recv_buf_pointer);
-    //查询本层是否有answer
-    RR=fopen(MY_TXT,"a+");
-    int flg=FirstFind();
-    if(flg==0){// 如果没找到则查询下一层服务器地址
-        SecondFind(recv_query->name);
+    while(1){
+        memset(recv_buffer,0,1024);
+        memset(send_buffer,0,1024);
+        send_buf_pointer=0;
+        recv_buf_pointer=0;
+        recvMsgSize = 0;
+        // memset(recv_header,0,sizeof(DH));
+        // memset(recv_query,0,sizeof(DQ));
+        //接收TCP信息
+        RecvTCP();
+        //解析header和query
+        recv_header = malloc(sizeof(DH));
+        unsigned short buf_len;
+        buf_len=Get16Bits(recv_buffer,&recv_buf_pointer);
+        DecodeHeader(recv_header,recv_buffer,&recv_buf_pointer);
+        recv_query=malloc(sizeof(DQ));
+        PrintHeader(recv_header);
+        DecodeQuery(recv_query,recv_buffer,&recv_buf_pointer);
+        //查询本层是否有answer
+        RR=fopen(MY_TXT,"a+");
+        int flg=FirstFind();
+        if(flg==0){// 如果没找到则查询下一层服务器地址
+            SecondFind(recv_query->name);
+        }
+        fclose(RR);
+        SendTCP();
     }
-    fclose(RR);
-    SendTCP();
     return 0;
 }
 
@@ -101,9 +107,8 @@ int FirstFind(){
             header=malloc(sizeof(DH));
             unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
             if(fileRR->type==TYPE_MX){
-                CreateHeader(header,recv_header->id,tag,1,1,0,1);
+                CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
-                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *mxRR;
@@ -126,9 +131,8 @@ int FirstFind(){
                 }
             }
             else if(fileRR->type==TYPE_CNAME){
-                CreateHeader(header,recv_header->id,tag,1,1,0,1);
+                CreateHeader(header,recv_header->id,tag,0,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
-                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *cname_RR;
@@ -151,9 +155,8 @@ int FirstFind(){
                 
             }
             else{
-                CreateHeader(header,recv_header->id,tag,1,1,0,0);
+                CreateHeader(header,recv_header->id,tag,0,1,0,0);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
-                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
             }
             PrintHeader(header);
@@ -162,30 +165,30 @@ int FirstFind(){
             break;
         }
     }
-    //回位
-    fseek(RR,0,0);
-    //MX类型
-    if(fileRR->type!=TYPE_A){
-        struct DNS_RR *addFileRR;
-        addFileRR=malloc(sizeof(DR));
-        addFileRR->name=malloc(MAX_DOMAIN_LEN);
-        addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
-        while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
-            fscanf(RR,"%d ",&addFileRR->ttl);
-            char type[10],cls[10];
-            fscanf(RR,"%s ",cls);
-            fscanf(RR,"%s ",type);
-            addFileRR->type=TypeToNum(type);
-            fscanf(RR,"%s\n",addFileRR->rdata);
-            if(strcmp(fileRR->rdata,addFileRR->name)==0){
-                printf("find mx rr.\n");
-                CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
-                EncodeRR(addFileRR,send_buffer,&send_buf_pointer);
-                PrintRR(addFileRR);
-                break;;
-            }
-        }
-    }
+    // //回位
+    // fseek(RR,0,0);
+    // //MX类型
+    // if(fileRR->type!=TYPE_A){
+    //     struct DNS_RR *addFileRR;
+    //     addFileRR=malloc(sizeof(DR));
+    //     addFileRR->name=malloc(MAX_DOMAIN_LEN);
+    //     addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
+    //     while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
+    //         fscanf(RR,"%d ",&addFileRR->ttl);
+    //         char type[10],cls[10];
+    //         fscanf(RR,"%s ",cls);
+    //         fscanf(RR,"%s ",type);
+    //         addFileRR->type=TypeToNum(type);
+    //         fscanf(RR,"%s\n",addFileRR->rdata);
+    //         if(strcmp(fileRR->rdata,addFileRR->name)==0){
+    //             printf("find mx rr.\n");
+    //             CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
+    //             EncodeRR(addFileRR,send_buffer,&send_buf_pointer);
+    //             PrintRR(addFileRR);
+    //             break;;
+    //         }
+    //     }
+    // }
     return find_flg; 
 }
 
@@ -212,9 +215,8 @@ void SecondFind(char *domain){
                 struct DNS_Header *header;
                 header = malloc(sizeof(DH));
                 unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
-                CreateHeader(header,recv_header->id,tag,1,0,1,1);
+                CreateHeader(header,recv_header->id,tag,0,0,1,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
-                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 PrintHeader(header);
                 
                 //生成authority RR  NS记录type=2   此时query_section->name经过cut后已经变成了下一个要去的DNS服务器域名
@@ -239,9 +241,8 @@ void SecondFind(char *domain){
     struct DNS_Header *header;
     header = malloc(sizeof(DH));
     unsigned short tag = CreateTag(1,0,1,0,0,0,0,1);
-    CreateHeader(header,recv_header->id,tag,1,0,0,0);
+    CreateHeader(header,recv_header->id,tag,0,0,0,0);
     EncodeHeader(header,send_buffer,&send_buf_pointer);
-    EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
     PrintHeader(header);
 }
 

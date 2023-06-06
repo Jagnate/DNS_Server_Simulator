@@ -102,8 +102,9 @@ int FirstFind(){
             header=malloc(sizeof(DH));
             unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
             if(fileRR->type==TYPE_MX){
-                CreateHeader(header,recv_header->id,tag,0,1,0,1);
+                CreateHeader(header,recv_header->id,tag,1,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *mxRR;
@@ -126,8 +127,9 @@ int FirstFind(){
                 }
             }
             else if(fileRR->type==TYPE_CNAME){
-                CreateHeader(header,recv_header->id,tag,0,1,0,1);
+                CreateHeader(header,recv_header->id,tag,1,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *cname_RR;
@@ -150,8 +152,9 @@ int FirstFind(){
                 
             }
             else{
-                CreateHeader(header,recv_header->id,tag,0,1,0,0);
+                CreateHeader(header,recv_header->id,tag,1,1,0,0);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
             }
             PrintHeader(header);
@@ -192,8 +195,9 @@ void NotFound(){
     struct DNS_Header *header;
     header = malloc(sizeof(DH));
     unsigned short tag = CreateTag(1,0,1,0,0,0,0,1);
-    CreateHeader(header,recv_header->id,tag,0,0,0,0);
+    CreateHeader(header,recv_header->id,tag,1,0,0,0);
     EncodeHeader(header,send_buffer,&send_buf_pointer);
+    EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
     PrintHeader(header);
 }
 

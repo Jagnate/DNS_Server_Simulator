@@ -1,5 +1,6 @@
 #include "struct.h" 
- 
+
+
 int main(){
     
     struct DNS_Header *recv_header;
@@ -86,9 +87,10 @@ int main(){
                 struct DNS_Header *header;
                 header = malloc(sizeof(DH));
                 unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
-                CreateHeader(header,recv_header->id,tag,0,0,1,1);
+                CreateHeader(header,recv_header->id,tag,1,0,1,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
                 PrintHeader(header);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 
                 //生成authority RR  NS记录type=2   此时query_section->name经过cut后已经变成了下一个要去的DNS服务器域名
                 struct DNS_RR *authRR;
@@ -110,7 +112,13 @@ int main(){
         CutDomain(&recv_query->name);	
     }
     printf("Not found.\n");
-    //没找到应该回什么？
+    struct DNS_Header *header;
+    header = malloc(sizeof(DH));
+    unsigned short tag = CreateTag(1,0,1,0,0,0,0,1);
+    CreateHeader(header,recv_header->id,tag,1,0,0,0);
+    EncodeHeader(header,send_buffer,&send_buf_pointer);
+    EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
+    PrintHeader(header);
     out:
     fclose(RR);
 

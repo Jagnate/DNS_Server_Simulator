@@ -101,8 +101,9 @@ int FirstFind(){
             header=malloc(sizeof(DH));
             unsigned short tag=CreateTag(1,0,1,0,0,0,0,0);
             if(fileRR->type==TYPE_MX){
-                CreateHeader(header,recv_header->id,tag,0,1,0,1);
+                CreateHeader(header,recv_header->id,tag,1,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *mxRR;
@@ -125,8 +126,9 @@ int FirstFind(){
                 }
             }
             else if(fileRR->type==TYPE_CNAME){
-                CreateHeader(header,recv_header->id,tag,0,1,0,1);
+                CreateHeader(header,recv_header->id,tag,1,1,0,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
                 fseek(RR,0,0);
                 struct DNS_RR *cname_RR;
@@ -149,8 +151,9 @@ int FirstFind(){
                 
             }
             else{
-                CreateHeader(header,recv_header->id,tag,0,1,0,0);
+                CreateHeader(header,recv_header->id,tag,1,1,0,0);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 EncodeRR(fileRR,send_buffer,&send_buf_pointer);
             }
             PrintHeader(header);
@@ -209,8 +212,9 @@ void SecondFind(char *domain){
                 struct DNS_Header *header;
                 header = malloc(sizeof(DH));
                 unsigned short tag = CreateTag(1,0,1,0,0,0,0,0);
-                CreateHeader(header,recv_header->id,tag,0,0,1,1);
+                CreateHeader(header,recv_header->id,tag,1,0,1,1);
                 EncodeHeader(header,send_buffer,&send_buf_pointer);
+                EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
                 PrintHeader(header);
                 
                 //生成authority RR  NS记录type=2   此时query_section->name经过cut后已经变成了下一个要去的DNS服务器域名
@@ -235,8 +239,9 @@ void SecondFind(char *domain){
     struct DNS_Header *header;
     header = malloc(sizeof(DH));
     unsigned short tag = CreateTag(1,0,1,0,0,0,0,1);
-    CreateHeader(header,recv_header->id,tag,0,0,0,0);
+    CreateHeader(header,recv_header->id,tag,1,0,0,0);
     EncodeHeader(header,send_buffer,&send_buf_pointer);
+    EncodeQuery(recv_query,send_buffer,&send_buf_pointer)
     PrintHeader(header);
 }
 

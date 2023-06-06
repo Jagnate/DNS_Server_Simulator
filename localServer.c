@@ -165,6 +165,7 @@ int main(){
 			struct DNS_Header *temp_header = malloc(sizeof(DH)); //最开始的UDP header
 			struct DNS_Query *temp_query = malloc(sizeof(DQ));
 			UDP_buffer_pointer = 0;
+			DecodeQuery(temp_query,recv_buffer,&recv_buffer_pointer);
 			DecodeRR(ans_record,recv_buffer,&recv_buffer_pointer);
 			PrintRR(ans_record);
 			DecodeHeader(temp_header,UDP_buffer,&UDP_buffer_pointer);

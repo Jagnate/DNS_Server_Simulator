@@ -127,7 +127,6 @@ int FirstFind(){
                     if(strcmp(fileRR->rdata,mxRR->name)==0){
                         CreateRR(mxRR,mxRR->name,mxRR->type,0x0001,mxRR->ttl,0x0000,mxRR->rdata);
                         EncodeRR(mxRR,send_buffer,&send_buf_pointer);
-                        PrintRR(mxRR);
                     }
                 }
             }
@@ -166,30 +165,6 @@ int FirstFind(){
             break;
         }
     }
-    // //回位
-    // fseek(RR,0,0);
-    // //MX类型
-    // if(fileRR->type!=TYPE_A){
-    //     struct DNS_RR *addFileRR;
-    //     addFileRR=malloc(sizeof(DR));
-    //     addFileRR->name=malloc(MAX_DOMAIN_LEN);
-    //     addFileRR->rdata=malloc(MAX_DOMAIN_LEN);
-    //     while(fscanf(RR,"%s ",addFileRR->name)!=EOF){
-    //         fscanf(RR,"%d ",&addFileRR->ttl);
-    //         char type[10],cls[10];
-    //         fscanf(RR,"%s ",cls);
-    //         fscanf(RR,"%s ",type);
-    //         addFileRR->type=TypeToNum(type);
-    //         fscanf(RR,"%s\n",addFileRR->rdata);
-    //         if(strcmp(fileRR->rdata,addFileRR->name)==0){
-    //             printf("find mx rr.\n");
-    //             CreateRR(addFileRR,fileRR->rdata, 1, 1, fileRR->ttl, 0, addFileRR->rdata);
-    //             EncodeRR(addFileRR,send_buffer,&send_buf_pointer);
-    //             PrintRR(addFileRR);
-    //             break;;
-    //         }
-    //     }
-    // }
     return find_flg; 
 }
 
@@ -234,7 +209,7 @@ void SendTCP(){
     //send(ServerSocketTCP,&recvMsgSize,2,0);
     char TCPBuffer[1024];
     unsigned short length = htons(send_buf_pointer);
-    printf("%d",send_buf_pointer);
+    //printf("%d",send_buf_pointer);
     memcpy(TCPBuffer,&length,2);
     memcpy(TCPBuffer+2,send_buffer,2+send_buf_pointer);
     ret = send(ServerSocketTCP,TCPBuffer,2+send_buf_pointer,0);

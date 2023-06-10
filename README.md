@@ -5,9 +5,9 @@
 
 ## To do:
 ~~1.Trace~~  
-2.PTR 
+2.PTR   
 ~~3.Cache~~  
-4.Multi-Query
+4.Multi-Query  
 5.Compress Pointer   
 6.CMake file    
 ~~7.Print Ans~~   
